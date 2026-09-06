@@ -1,0 +1,7 @@
+{
+  "name": "TrendPrompt AI",
+  "description": "Turn any trending image into a structured AI image-generation prompt to recreate visual styles and trends with your own photos.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
