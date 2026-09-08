@@ -170,7 +170,29 @@ CRITICAL USER SPECIFICATIONS:
      * Identical body proportions: natural authentic body size and weight with ZERO artificial slimming or warping.
    - The user's face is seamlessly integrated into the elevated trend scene (wardrobe, lighting, atmosphere, and background)!
 
-3. PROVIDE READY-TO-USE FORMATS FOR ALL MAJOR AI TOOLS:
+3. MANDATORY ULTRA-DETAILED MULTI-SECTION PROMPT STRUCTURE:
+   You MUST format "fullPrompt" and "detailedPrompt" into this EXACT comprehensive blueprint:
+   Create a picture of this [woman/man/person] unchanged [her/his/their] feature face Subject: [Comprehensive description of the subject, stance, pose, angle looking back over shoulder towards viewer, confident and chic expression, natural makeup with contour, highlight, lip tone]
+
+   Hair: [Specific hair length, color, styling, soft voluminous waves, strands swept by breeze, texture, dynamic movement]
+
+   Dress & Style: [Exact clothing style, fabric type, texture, cut, fit, layered details, suitable climate]
+
+   Accessories: [Specific accessories: sunglasses (dark oval-shaped, substantial frame), handbag (classic black quilted handbag with gold chain strap, high-end designer reminiscent of Chanel), jewelry (delicate gold ring on hand), etc.]
+
+   Vibe & Emotion: [Sophisticated vacation, luxury, relaxed glamour, confidence, allure, poised elegance]
+
+   Lighting: [Bright natural sunlight, clear day, subtle highlights on hair and skin, gentle shadows, depth]
+
+   Colors: [Dominant colors, vibrant blue of sea/sky, lush green foliage, road tones, wardrobe contrasts]
+
+   Background: [Stunning coastal or scenic landscape, clear calm horizon, distant mountains/hills, foreground pathway/road flanked by green bushes/trees, hints of resort or upscale architecture]
+
+   Camera Angle & Composition: [Medium-close up focusing on subject from waist up, camera positioned slightly below eye level, off-center placement with expansive backdrop, leading lines]
+
+   Photography Style: [High resolution, sharp optical focus on subject, natural vibrant color palette, candid yet perfectly styled travel or fashion photograph, capturing effortless elegance]
+
+4. PROVIDE READY-TO-USE FORMATS FOR ALL MAJOR AI TOOLS:
    - Full Prompt: Universal Master Face-Swap Prompt that clearly instructs any AI tool to map the user's face onto the trend.
    - Midjourney: Complete with '--cref [YOUR_PHOTO_URL] --cw 100 --ar 3:4 --v 6.1 --style raw --no altered face, changed nose, different ears, modified nose, altered body size, slimming, morphed face, cartoon'.
    - Leonardo.ai / Fooocus: Optimized prompt with explicit Image Guidance (Character Reference / Face Transfer) instructions.
@@ -376,11 +398,29 @@ function generateIntelligentFallback(
     ? "Photographic portrait of the exact individual shown in the user's uploaded portrait. ABSOLUTE FACIAL & ANATOMICAL LOCK: Freeze and strictly preserve 100% of authentic facial geometry with zero modification: identical nose shape (bridge width, nasal tip contour, nostril shape), identical ears (size, position, earlobe structure), exact eye shape, eyelid contour, natural cheekbones, and jawline. Strictly preserve the subject's authentic natural body size and physical proportions without slimming or modification."
     : "Photographic portrait with STRICT IDENTITY PRESERVATION. Freeze authentic facial features: identical nose bridge and tip, identical ear size and shape, authentic eye geometry, and authentic natural body size with zero alteration or slimming.";
 
-  const fullPrompt = `${identityAnchor} Transpose this exact individual into the viral visual trend: Recreated in the composition, lighting, wardrobe, and atmosphere of the reference image. Illuminated by soft 45-degree directional key lighting with delicate rim light on hair and shoulders. Shot on Hasselblad H6D with ${selectedMode.lens}, shallow depth of field, creamy background blur. Authentic raw skin texture with realistic micro-pores, zero plastic smoothing, zero artificial AI beautification. Negative prompt: altered face, changed nose, different nose shape, modified nostrils, altered ears, different ears, altered body size, artificial slimming, morphed face, cartoon, doll-like.`;
+  const fullPrompt = `Create a picture of this woman unchanged her feature face Subject: A stylish young woman posing outdoors with a scenic coastal background. She is looking back over her shoulder towards the viewer, with a confident and chic expression. Natural makeup brown contour and highlight, rose lip color.
 
-  const shortPrompt = `${identityAnchor.slice(0, 180)}. Recreate reference trend composition, ${selectedMode.lens}, soft directional lighting, creamy bokeh, natural skin texture, editorial finish.`;
+Hair: Long, luscious Light brown hair styled in soft, voluminous waves, with some strands gently swept back by the breeze, adding a dynamic element to the image.
 
-  const detailedPrompt = `High-production ${style.toLowerCase()} photography still. The subject's authentic facial identity is strictly locked: identical nose geometry (bridge width, tip angle, nostrils), identical ear structure, and identical natural body size and proportions. The composition precisely preserves the spatial staging and angle of the reference. Lighting features a 45-degree diffused key light paired with subtle hair rim light to separate the subject from the background. Shot on Hasselblad H6D with ${selectedMode.lens} at f/1.8. Color graded with authentic warm tones and gentle highlight halation. Zero plastic digital smoothing, realistic skin pores, and Vogue editorial polish. Negative prompt: altered face, changed nose, different ears, modified nose, altered body size, slimming, morphed face, bad anatomy.`;
+Dress & Style: She is wearing a light blue, possibly striped or textured, halter-neck or strapless top with a ruffled or layered detail. The fabric appears light and airy, suitable for a warm climate.
+
+Accessories: Sunglasses: Fashionable dark, oval-shaped sunglasses with a substantial frame. Handbag: A classic black quilted handbag with a gold chain strap, likely a high-end designer bag (reminiscent of Chanel). The bag is worn over her shoulder, resting against her side. Jewelry: A delicate gold ring is visible on her right hand, which is raised to adjust her sunglasses or playfully touch her hair.
+
+Vibe & Emotion: The overall vibe is one of sophisticated vacation, luxury, and relaxed glamour. Her pose and expression convey confidence, allure, and a sense of enjoying a beautiful destination.
+
+Lighting: Bright and natural sunlight, typical of a clear day. The lighting creates subtle highlights on her hair and skin, and casts gentle shadows, giving depth to the scene.
+
+Colors: The dominant colors are the vibrant blue of the sea and sky, the lush greens of the foliage, the light tones of the road, and the woman's dark hair and black accessories contrasted by her light blue top.
+
+Background: A stunning coastal landscape with a clear, calm blue sea extending to the horizon. In the distance, faint outlines of mountains or hills are visible. The foreground features a well-maintained pathway or road flanked by green, manicured bushes and mature trees (possibly pines). There are hints of white buildings or structures in the distance near the coastline, suggesting a resort or upscale area.
+
+Camera Angle & Composition: The shot is a medium-close up, focusing on the woman from the waist up. The camera is positioned slightly below eye level, which can be flattering. The composition places her slightly off-center, with the expansive sea and sky providing a beautiful and balanced backdrop. The winding road leads the eye towards the distant water.
+
+Photography Style: The image appears to be high-resolution, with sharp focus on the subject and a natural, vibrant color palette. It has the feel of a candid yet perfectly styled travel or fashion photograph, capturing an effortless elegance.`;
+
+  const shortPrompt = `Create a picture of this woman unchanged her feature face with scenic coastal background, looking back over shoulder, soft waves light brown hair, light blue ruffled halter top, sunglasses, quilted black chain bag, bright natural sunlight, Hasselblad 85mm optical sharpness.`;
+
+  const detailedPrompt = fullPrompt;
 
   const midjourneyFormat = `${style.toLowerCase()} portrait, strict face and body lock, identical nose shape, identical ears, authentic body size, recreate reference trend composition, ${selectedMode.lens}, soft directional lighting, rim light on hair, creamy bokeh, natural skin texture --cref [YOUR_PHOTO_URL] --cw 100 --no altered face, changed nose, different ears, modified nose, altered body size, slimming, morphed face, cartoon --ar 3:4 --v 6.1 --style raw`;
 

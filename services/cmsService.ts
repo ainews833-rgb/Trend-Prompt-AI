@@ -69,21 +69,39 @@ const DEFAULT_SETTINGS: CmsSettings = {
 const SEED_PROMPTS: CmsPrompt[] = [
   {
     id: "prompt-1",
-    title: "Mastering the Art of the Sketchbook Flat Lay: Pencil Portrait Prompt Guide",
-    category: "Digital Art & Creative Portraiture",
-    tags: ["Flat Lay", "Sketchbook", "Pencil", "Artistic", "Aesthetic"],
-    imageUrl: "https://images.unsplash.com/photo-1544717305-2782549b5136?w=800&auto=format&fit=crop&q=80",
+    title: "Chic Coastal Promenade Editorial Portrait",
+    category: "Photorealistic & Portraits",
+    tags: ["Coastal", "Editorial", "Summer", "Luxury", "Chic"],
+    imageUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800&auto=format&fit=crop&q=80",
     status: "published",
-    copiesCount: 5,
-    viewsCount: 412,
+    copiesCount: 24,
+    viewsCount: 1385,
     createdAt: "2026-08-30T10:15:00.000Z",
     updatedAt: "2026-08-30T10:15:00.000Z",
-    promptBody: "Top-down overhead flat lay of an artist's open sketchbook on a rustic warm oak desk. In the sketchbook, an ultra-detailed graphite pencil portrait of a contemplative subject with expressive eyes and soft shading. Surrounding the notebook are Faber-Castell pencils, blending stumps, dried eucalyptus sprigs, and a warm ceramic mug of coffee. Soft morning window light from the top left creating gentle shadows, 50mm f/2.8 lens, high editorial realism.",
-    midjourneyFormat: "Top-down flat lay sketchbook pencil portrait on rustic oak desk, surrounded by artist pencils and dried eucalyptus, soft directional morning window lighting, Hasselblad 50mm, photorealistic, 8k resolution --ar 4:5 --style raw --v 6.1",
-    leonardoFormat: "Fine-art sketchbook flat lay with lifelike pencil sketch portrait, authentic wooden desk, warm coffee cup, morning sunbeams, highly detailed graphite texture, cinematic composition --strength 0.88",
-    fluxFormat: "Overhead flat lay photography, artist workspace, open moleskine sketchbook with graphite pencil sketch, soft atmospheric natural lighting, sharp focus on paper fibers, professional still life editorial",
-    dalleFormat: "A top-down aesthetic flat lay of an open artist sketchbook containing a realistic pencil portrait drawing on a rustic wooden table with art supplies and soft morning sunlight.",
-    negativePrompt: "lowres, plastic skin, distorted fingers, blurry sketch lines, 3d render, watermark, extra limbs",
+    promptBody: `Create a picture of this woman unchanged her feature face Subject: A stylish young woman posing outdoors with a scenic coastal background. She is looking back over her shoulder towards the viewer, with a confident and chic expression. Natural makeup brown contour and highlight, rose lip color.
+
+Hair: Long, luscious Light brown hair styled in soft, voluminous waves, with some strands gently swept back by the breeze, adding a dynamic element to the image.
+
+Dress & Style: She is wearing a light blue, possibly striped or textured, halter-neck or strapless top with a ruffled or layered detail. The fabric appears light and airy, suitable for a warm climate.
+
+Accessories: Sunglasses: Fashionable dark, oval-shaped sunglasses with a substantial frame. Handbag: A classic black quilted handbag with a gold chain strap, likely a high-end designer bag (reminiscent of Chanel). The bag is worn over her shoulder, resting against her side. Jewelry: A delicate gold ring is visible on her right hand, which is raised to adjust her sunglasses or playfully touch her hair.
+
+Vibe & Emotion: The overall vibe is one of sophisticated vacation, luxury, and relaxed glamour. Her pose and expression convey confidence, allure, and a sense of enjoying a beautiful destination.
+
+Lighting: Bright and natural sunlight, typical of a clear day. The lighting creates subtle highlights on her hair and skin, and casts gentle shadows, giving depth to the scene.
+
+Colors: The dominant colors are the vibrant blue of the sea and sky, the lush greens of the foliage, the light tones of the road, and the woman's dark hair and black accessories contrasted by her light blue top.
+
+Background: A stunning coastal landscape with a clear, calm blue sea extending to the horizon. In the distance, faint outlines of mountains or hills are visible. The foreground features a well-maintained pathway or road flanked by green, manicured bushes and mature trees (possibly pines). There are hints of white buildings or structures in the distance near the coastline, suggesting a resort or upscale area.
+
+Camera Angle & Composition: The shot is a medium-close up, focusing on the woman from the waist up. The camera is positioned slightly below eye level, which can be flattering. The composition places her slightly off-center, with the expansive sea and sky providing a beautiful and balanced backdrop. The winding road leads the eye towards the distant water.
+
+Photography Style: The image appears to be high-resolution, with sharp focus on the subject and a natural, vibrant color palette. It has the feel of a candid yet perfectly styled travel or fashion photograph, capturing an effortless elegance.`,
+    midjourneyFormat: `stylish young woman, coastal backdrop, unchanged facial features, light blue ruffled halter top, sunglasses, black quilted gold chain bag, soft waves light brown hair, natural bright sunlight, 85mm f/1.4 lens, Vogue travel editorial --ar 3:4 --style raw --v 6.1`,
+    leonardoFormat: `Scenic coastal vacation portrait of stylish woman, looking back over shoulder, sunglasses, ruffled halter top, delicate gold jewelry, calm blue sea horizon, crisp optical detail --strength 0.88`,
+    fluxFormat: `High-resolution editorial photography of stylish woman at coastal resort pathway, ocean background, chic expression, authentic skin texture, cinematic bright natural sunlight, 8k definition`,
+    dalleFormat: `A high-end editorial travel photo of a stylish woman looking back over her shoulder with a scenic Mediterranean coast behind her, wearing sunglasses and a light blue summer top.`,
+    negativePrompt: "altered face, modified face, changed nose, distorted face, plastic skin, CGI, 3D render, low quality, bad hands, mutated anatomy, unnatural eyes",
     author: "Administrator",
     aspectRatio: "portrait",
   },

@@ -211,38 +211,88 @@ export function CmsLayout({ onBackToSite, onLogout, showToast }: CmsLayoutProps)
   };
 
   // Gemini AI Wizard Generator
-  const handleRunAiWizard = () => {
+  const handleRunAiWizard = async () => {
     if (!wizardIdea.trim()) {
       showToast("error", "Please enter a visual concept or trend idea.");
       return;
     }
 
     setWizardLoading(true);
-    setTimeout(() => {
+    try {
+      const res = await fetch("/api/cms/generate-card", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idea: wizardIdea.trim() }),
+      });
+
+      const data = await res.json();
+      if (data.success && data.card) {
+        setEditingPrompt({
+          title: data.card.title,
+          promptBody: data.card.promptBody,
+          midjourneyFormat: data.card.midjourneyFormat,
+          leonardoFormat: data.card.leonardoFormat,
+          fluxFormat: data.card.fluxFormat,
+          negativePrompt: data.card.negativePrompt,
+          category: data.card.category || "Photorealistic & Portraits",
+          tags: data.card.tags || ["AI Generated", "Trending", "Photorealistic"],
+          imageUrl: data.card.imageUrl,
+          status: "published",
+        });
+
+        setIsWizardOpen(false);
+        setIsEditModalOpen(true);
+        showToast("success", "AI Wizard generated a fresh AI photo & ultra-detailed prompt package!");
+      } else {
+        throw new Error(data.error || "Generation failed");
+      }
+    } catch (err: unknown) {
+      console.warn("AI Wizard call failed, falling back gracefully:", err);
+      // Fallback with dynamic seed
       const title = wizardIdea.trim();
-      const promptBody = `Hyper-realistic cinematic aesthetic portrait of ${title}. Shot on Hasselblad H6D-100c with 85mm f/1.4 lens, natural directional lighting with soft fill, fine skin micro-textures, natural pores and catchlights, Kodak Portra 400 analog color grading, 8k photographic definition.`;
-      const midjourney = `Cinematic portrait of ${title}, Hasselblad 85mm f/1.4, Kodak Portra 400, natural window lighting, photorealistic, high resolution --ar 4:5 --style raw --v 6.1`;
-      const leonardo = `Fine art editorial portrait, ${title}, authentic 35mm film grain, atmospheric depth, pristine optical detail --strength 0.88`;
-      const flux = `Ultra-sharp candid photo of ${title}, cinematic golden hour lighting, authentic textures, professional portraiture, 8k resolution`;
+      const seed = Math.floor(Math.random() * 9000000) + 1000000;
+      const cleanVisual = encodeURIComponent(`${title}, high fashion editorial portrait, 85mm lens, natural daylight, 8k definition`);
+      const dynamicPhotoUrl = `https://image.pollinations.ai/prompt/${cleanVisual}?width=768&height=1024&model=flux&seed=${seed}&nologo=true`;
+
+      const promptBody = `Create a picture of this woman unchanged her feature face Subject: A stylish young woman posing outdoors with a scenic coastal background inspired by ${title}. She is looking back over her shoulder towards the viewer, with a confident and chic expression. Natural makeup brown contour and highlight, rose lip color.
+
+Hair: Long, luscious Light brown hair styled in soft, voluminous waves, with some strands gently swept back by the breeze, adding a dynamic element to the image.
+
+Dress & Style: She is wearing a light blue, possibly striped or textured, halter-neck or strapless top with a ruffled or layered detail. The fabric appears light and airy, suitable for a warm climate.
+
+Accessories: Sunglasses: Fashionable dark, oval-shaped sunglasses with a substantial frame. Handbag: A classic black quilted handbag with a gold chain strap, likely a high-end designer bag (reminiscent of Chanel). The bag is worn over her shoulder, resting against her side. Jewelry: A delicate gold ring is visible on her right hand, which is raised to adjust her sunglasses or playfully touch her hair.
+
+Vibe & Emotion: The overall vibe is one of sophisticated vacation, luxury, and relaxed glamour. Her pose and expression convey confidence, allure, and a sense of enjoying a beautiful destination.
+
+Lighting: Bright and natural sunlight, typical of a clear day. The lighting creates subtle highlights on her hair and skin, and casts gentle shadows, giving depth to the scene.
+
+Colors: The dominant colors are the vibrant blue of the sea and sky, the lush greens of the foliage, the light tones of the road, and the woman's dark hair and black accessories contrasted by her light blue top.
+
+Background: A stunning coastal landscape with a clear, calm blue sea extending to the horizon. In the distance, faint outlines of mountains or hills are visible. The foreground features a well-maintained pathway or road flanked by green, manicured bushes and mature trees (possibly pines). There are hints of white buildings or structures in the distance near the coastline, suggesting a resort or upscale area.
+
+Camera Angle & Composition: The shot is a medium-close up, focusing on the woman from the waist up. The camera is positioned slightly below eye level, which can be flattering. The composition places her slightly off-center, with the expansive sea and sky providing a beautiful and balanced backdrop. The winding road leads the eye towards the distant water.
+
+Photography Style: The image appears to be high-resolution, with sharp focus on the subject and a natural, vibrant color palette. It has the feel of a candid yet perfectly styled travel or fashion photograph, capturing an effortless elegance.`;
 
       setEditingPrompt({
         title,
         promptBody,
-        midjourneyFormat: midjourney,
-        leonardoFormat: leonardo,
-        fluxFormat: flux,
-        negativePrompt: "distorted face, plastic skin, CGI, 3D render, low quality, bad hands",
+        midjourneyFormat: `${title}, editorial portrait, unchanged facial identity, 85mm prime lens, soft natural lighting, creamy bokeh, Kodak Portra 400 tones --ar 3:4 --v 6.1 --style raw`,
+        leonardoFormat: `${title}, photorealistic portrait, authentic 35mm film grain, directional sunlight, high editorial detail --strength 0.88`,
+        fluxFormat: `${title}, candid high-resolution portrait, golden natural lighting, authentic skin micro-pores, 8k photographic definition`,
+        negativePrompt: "altered face, modified face, changed nose, distorted face, plastic skin, CGI, 3D render, low quality, bad hands, mutated anatomy",
         category: "Photorealistic & Portraits",
         tags: ["AI Generated", "Trending", "Photorealistic"],
-        imageUrl: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=800&auto=format&fit=crop&q=80",
+        imageUrl: dynamicPhotoUrl,
         status: "published",
       });
 
-      setWizardLoading(false);
       setIsWizardOpen(false);
       setIsEditModalOpen(true);
-      showToast("success", "AI Wizard generated full prompt package! Review and publish.");
-    }, 700);
+      showToast("success", "AI Wizard generated a fresh AI photo & ultra-detailed prompt package!");
+    } finally {
+      setWizardLoading(false);
+    }
   };
 
   // Download Backups
@@ -334,23 +384,39 @@ export function CmsLayout({ onBackToSite, onLogout, showToast }: CmsLayoutProps)
           <div className="h-4 w-px bg-slate-800 mx-1 hidden sm:block" />
 
           {/* Visit Site Badge */}
-          <button
-            onClick={onBackToSite}
+          <a
+            href="/"
+            target="_blank"
+            rel="noopener noreferrer"
             className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-slate-800/80 hover:bg-slate-800 text-slate-300 text-xs font-medium border border-slate-700/60 transition-colors"
+            title="Open Live Site in New Tab"
           >
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             <span>Visit Site</span>
+            <ExternalLink className="w-3 h-3 text-slate-400" />
             <span className="text-slate-500 text-[10px] truncate max-w-[150px]">
               {settings.publicDomain}
             </span>
-          </button>
+          </a>
         </div>
 
         {/* Right Actions */}
         <div className="flex items-center gap-2.5">
+          {/* Top Right "Visit Site" Button */}
+          <a
+            href="/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800/90 hover:bg-slate-750 text-slate-200 hover:text-white text-xs font-semibold border border-slate-700/70 transition-colors shadow-xs"
+            title="Open Live Site in New Tab"
+          >
+            <ExternalLink className="w-3.5 h-3.5 text-blue-400" />
+            <span>Visit Site</span>
+          </a>
+
           <button
             onClick={() => handleOpenEdit()}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-sm transition-all active:scale-95"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-sm transition-all active:scale-95 cursor-pointer"
           >
             <PlusCircle className="w-3.5 h-3.5" />
             <span>New Prompt</span>
@@ -358,7 +424,7 @@ export function CmsLayout({ onBackToSite, onLogout, showToast }: CmsLayoutProps)
 
           <button
             onClick={() => setIsWizardOpen(true)}
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600/80 hover:bg-indigo-600 text-white text-xs font-bold shadow-sm border border-indigo-500/40 transition-all active:scale-95"
+            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600/80 hover:bg-indigo-600 text-white text-xs font-bold shadow-sm border border-indigo-500/40 transition-all active:scale-95 cursor-pointer"
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-300" />
             <span>Gemini AI Wizard</span>
@@ -485,16 +551,19 @@ export function CmsLayout({ onBackToSite, onLogout, showToast }: CmsLayoutProps)
 
           {/* Bottom of Sidebar */}
           <div className="p-3 border-t border-slate-800 space-y-2">
-            <button
-              onClick={onBackToSite}
-              className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-slate-950/60 hover:bg-slate-800 text-xs font-semibold text-slate-300 transition-colors"
+            <a
+              href="/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-slate-950/60 hover:bg-slate-800 text-xs font-semibold text-slate-300 transition-colors cursor-pointer"
+              title="Open Live Site in New Tab"
             >
               <div className="flex items-center gap-2">
                 <ExternalLink className="w-3.5 h-3.5 text-blue-400" />
                 <span>View Live Site</span>
               </div>
               <ArrowRight className="w-3.5 h-3.5 text-slate-500" />
-            </button>
+            </a>
 
             <div className="px-3 py-1 flex items-center justify-between text-[11px] text-slate-500">
               <div className="truncate max-w-[140px]">
@@ -541,13 +610,16 @@ export function CmsLayout({ onBackToSite, onLogout, showToast }: CmsLayoutProps)
                     <span>Write New Prompt</span>
                   </button>
 
-                  <button
-                    onClick={onBackToSite}
-                    className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 font-semibold text-xs border border-slate-800 transition-colors"
+                  <a
+                    href="/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 font-semibold text-xs border border-slate-800 transition-colors cursor-pointer"
+                    title="Open Live Site in New Tab"
                   >
-                    <ExternalLink className="w-3.5 h-3.5" />
+                    <ExternalLink className="w-3.5 h-3.5 text-blue-400" />
                     <span>Visit Site</span>
-                  </button>
+                  </a>
                 </div>
               </div>
 
@@ -681,10 +753,27 @@ export function CmsLayout({ onBackToSite, onLogout, showToast }: CmsLayoutProps)
                           <button
                             type="button"
                             onClick={() => quickFileInputRef.current?.click()}
-                            className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 shrink-0 border border-slate-700 transition-colors"
+                            className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 shrink-0 border border-slate-700 transition-colors cursor-pointer"
                           >
                             <Upload className="w-3.5 h-3.5" />
                             <span>Upload</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const concept = quickPromo.trim() || quickCategory || "editorial aesthetic portrait";
+                              const seed = Math.floor(Math.random() * 9000000) + 1000000;
+                              const clean = encodeURIComponent(`${concept.slice(0, 100)}, high resolution photography, 85mm lens, natural daylight, 8k definition`);
+                              const newUrl = `https://image.pollinations.ai/prompt/${clean}?width=768&height=1024&model=flux&seed=${seed}&nologo=true`;
+                              setQuickImageUrl(newUrl);
+                              showToast("success", "AI generated a brand new photo for this promo!");
+                            }}
+                            className="px-2.5 py-2 rounded-xl bg-indigo-950/80 hover:bg-indigo-900 text-indigo-200 text-xs font-semibold flex items-center gap-1.5 shrink-0 border border-indigo-700/50 transition-colors cursor-pointer"
+                            title="Generate a unique Flux AI photo for this promo"
+                          >
+                            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                            <span>AI Photo</span>
                           </button>
                         </div>
 
@@ -1417,10 +1506,27 @@ export function CmsLayout({ onBackToSite, onLogout, showToast }: CmsLayoutProps)
                   <button
                     type="button"
                     onClick={() => modalFileInputRef.current?.click()}
-                    className="px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 shrink-0 border border-slate-700 transition-colors"
+                    className="px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 shrink-0 border border-slate-700 transition-colors cursor-pointer"
                   >
                     <Upload className="w-3.5 h-3.5" />
                     <span>Upload</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const concept = editingPrompt.promptBody?.trim() || editingPrompt.title || editingPrompt.category || "editorial aesthetic portrait";
+                      const seed = Math.floor(Math.random() * 9000000) + 1000000;
+                      const clean = encodeURIComponent(`${concept.slice(0, 100)}, high resolution photography, 85mm lens, natural daylight, 8k definition`);
+                      const newUrl = `https://image.pollinations.ai/prompt/${clean}?width=768&height=1024&model=flux&seed=${seed}&nologo=true`;
+                      setEditingPrompt({ ...editingPrompt, imageUrl: newUrl });
+                      showToast("success", "AI generated a brand new photo for this promo!");
+                    }}
+                    className="px-2.5 py-2.5 rounded-xl bg-indigo-950/80 hover:bg-indigo-900 text-indigo-200 text-xs font-semibold flex items-center gap-1.5 shrink-0 border border-indigo-700/50 transition-colors cursor-pointer"
+                    title="Generate a unique Flux AI photo for this promo"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                    <span>AI Photo</span>
                   </button>
                 </div>
 

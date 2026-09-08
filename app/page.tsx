@@ -329,21 +329,6 @@ export default function Home() {
 
         {/* Global Toast Container */}
         <ToastContainer toasts={toasts} onDismiss={dismissToast} />
-
-        {/* Discreet Quick Switch back to Admin CMS for Authenticated Admin (Hidden from normal users) */}
-        {isAdminLoggedIn && (
-          <div className="fixed bottom-4 left-4 z-40">
-            <button
-              onClick={() => setActiveTab("cms")}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/95 hover:bg-slate-900 text-white text-xs font-semibold shadow-2xl border border-blue-500/50 backdrop-blur-md transition-transform hover:scale-105 active:scale-95 cursor-pointer"
-              title="Return to CMS Admin Dashboard (Shortcut: Ctrl+Shift+A)"
-            >
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span>Admin Panel</span>
-              <span className="text-[10px] text-slate-400 font-mono hidden sm:inline">Ctrl+Shift+A</span>
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );
