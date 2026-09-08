@@ -16,8 +16,8 @@ export function CmsLoginView({
   showToast,
 }: CmsLoginViewProps) {
   const settings = CmsService.getSettings();
-  const [usernameOrEmail, setUsernameOrEmail] = useState<string>(settings.adminEmail || "admin@trendinggeminiprompts.com");
-  const [password, setPassword] = useState<string>("admin123");
+  const [usernameOrEmail, setUsernameOrEmail] = useState<string>(settings.adminUsername || "admin");
+  const [password, setPassword] = useState<string>("");
   const [rememberMe, setRememberMe] = useState<boolean>(true);
   const [errorMsg, setErrorMsg] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);

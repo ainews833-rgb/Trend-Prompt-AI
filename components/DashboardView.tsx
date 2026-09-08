@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Wand2,
   FolderHeart,
@@ -16,11 +16,9 @@ import {
   Compass,
 } from "lucide-react";
 import { ActiveTab, GeneratedPromptResult, User } from "@/types";
-import { PRESET_TRENDS, TrendPreset } from "@/services/presetSamples";
 import { HistoryService } from "@/services/historyService";
-import { PinterestTrendingFeed } from "@/components/PinterestTrendingFeed";
 import { PromptSideDrawer } from "@/components/PromptSideDrawer";
-import { CmsPrompt } from "@/services/cmsService";
+import { CmsPrompt, CmsService } from "@/services/cmsService";
 
 interface DashboardViewProps {
   user: User;
@@ -43,8 +41,17 @@ export function DashboardView({
   const recentPrompts = history.slice(0, 4);
   const favoriteCount = history.filter((h) => h.isFavorited).length;
 
+  const [promos, setPromos] = useState<CmsPrompt[]>(() => CmsService.getPublishedPrompts());
   const [selectedPrompt, setSelectedPrompt] = useState<CmsPrompt | null>(null);
   const [isSideDrawerOpen, setIsSideDrawerOpen] = useState(false);
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setPromos(CmsService.getPublishedPrompts());
+    };
+    window.addEventListener("cms-prompts-updated", handleUpdate);
+    return () => window.removeEventListener("cms-prompts-updated", handleUpdate);
+  }, []);
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -63,7 +70,7 @@ export function DashboardView({
       onSelectPreset(prompt.category);
     }
     setActiveTab("create");
-    showToast("info", `Loaded "${prompt.title}" into Studio. Add your photo to Slot 2!`);
+    showToast("info", `Loaded prompt for "${prompt.category}" into Studio.`);
   };
 
   return (
@@ -137,23 +144,16 @@ export function DashboardView({
         </div>
       </div>
 
-      {/* Pinterest-Style Trending Prompts Feed (With Live CMS updates & Side Drawer) */}
-      <PinterestTrendingFeed
-        onSelectPrompt={handleCardClick}
-        onUseInStudio={handleUseInStudio}
-        showToast={showToast}
-      />
-
-      {/* Trending Visual Inspirations (1-click to test workflow!) */}
+      {/* Trending Promos Section (Dynamically populated by Admin CMS) */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-blue-600" />
-              <span>Curated Trending Aesthetics</span>
+              <span>Trending Promos & Photo Styles</span>
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Click any trending style to load its visual analysis and try it with your own photo.
+              Click any promo photo to view its prompt print on the side and try it in Studio.
             </p>
           </div>
 
@@ -166,49 +166,65 @@ export function DashboardView({
           </button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {PRESET_TRENDS.map((preset) => (
-            <div
-              key={preset.id}
-              onClick={() => onSelectPreset(preset.id)}
-              className="group cursor-pointer rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 overflow-hidden shadow-xs hover:shadow-md hover:border-blue-400 dark:hover:border-blue-500 transition-all flex flex-col justify-between"
-            >
-              <div>
-                <div className="relative h-44 overflow-hidden bg-slate-100 dark:bg-slate-800">
-                  <img
-                    src={preset.imageUrl}
-                    alt={preset.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  <div className="absolute top-3 left-3">
-                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-900/80 text-white backdrop-blur-xs border border-white/20">
-                      {preset.badge}
-                    </span>
-                  </div>
-                  <div className="absolute bottom-3 right-3">
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-600/90 text-white backdrop-blur-xs">
-                      {preset.trendScore}/100 Match
-                    </span>
-                  </div>
-                </div>
-
-                <div className="p-4 space-y-1.5">
-                  <h3 className="font-bold text-sm text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                    {preset.title}
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
-                    {preset.description}
-                  </p>
-                </div>
-              </div>
-
-              <div className="px-4 pb-4 pt-1 flex items-center justify-between text-xs font-semibold text-blue-600 dark:text-blue-400 border-t border-slate-100 dark:border-slate-800/80">
-                <span>Analyze this Trend</span>
-                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-              </div>
+        {promos.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 p-8 sm:p-12 text-center bg-slate-50/50 dark:bg-slate-900/30">
+            <div className="w-12 h-12 rounded-2xl bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 mx-auto flex items-center justify-center mb-3">
+              <Sparkles className="w-6 h-6" />
             </div>
-          ))}
-        </div>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+              No Promo Cards Added Yet
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto mt-1.5 leading-relaxed">
+              When you add a promo in the backend with an image and promo text, it will appear here as a card.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {promos.map((promo) => (
+              <div
+                key={promo.id}
+                onClick={() => handleCardClick(promo)}
+                className="group cursor-pointer rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 overflow-hidden shadow-xs hover:shadow-md hover:border-blue-400 dark:hover:border-blue-500 transition-all flex flex-col justify-between"
+              >
+                <div>
+                  <div className="relative h-48 overflow-hidden bg-slate-100 dark:bg-slate-800">
+                    {promo.imageUrl ? (
+                      <img
+                        src={promo.imageUrl}
+                        alt={promo.category}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center bg-slate-100 dark:bg-slate-800 text-slate-400">
+                        <Camera className="w-8 h-8 opacity-40 mb-1" />
+                        <span className="text-[11px] font-medium">{promo.category}</span>
+                      </div>
+                    )}
+                    <div className="absolute top-3 left-3">
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-slate-900/80 text-white backdrop-blur-xs border border-white/20">
+                        {promo.category}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="p-4 space-y-1.5">
+                    <p className="text-xs text-slate-700 dark:text-slate-300 font-mono line-clamp-3 leading-relaxed">
+                      {promo.promptBody}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="px-4 pb-4 pt-2 flex items-center justify-between text-xs font-semibold text-blue-600 dark:text-blue-400 border-t border-slate-100 dark:border-slate-800/80">
+                  <span className="flex items-center gap-1.5">
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>View Prompt Print</span>
+                  </span>
+                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* How It Works 3-Step Section (Section 23 & 24) */}

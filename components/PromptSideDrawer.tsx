@@ -126,21 +126,23 @@ export function PromptSideDrawer({
             </div>
           </div>
 
-          {/* Title & Creator */}
+          {/* Title & Category */}
           <div>
             <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white leading-tight">
-              {prompt.title}
+              {prompt.title && prompt.title !== prompt.category ? prompt.title : prompt.category}
             </h2>
-            <div className="flex flex-wrap items-center gap-2 mt-2">
-              {prompt.tags.map((tag, idx) => (
-                <span
-                  key={idx}
-                  className="text-xs px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium"
-                >
-                  #{tag}
-                </span>
-              ))}
-            </div>
+            {prompt.tags && prompt.tags.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 mt-2">
+                {prompt.tags.map((tag, idx) => (
+                  <span
+                    key={idx}
+                    className="text-xs px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium"
+                  >
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Primary Action: Recreate in Studio with Your Face */}

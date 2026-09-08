@@ -366,25 +366,29 @@ export class CmsService {
   }
 
   public static getPrompts(): CmsPrompt[] {
-    if (typeof window === "undefined") return SEED_PROMPTS;
+    if (typeof window === "undefined") return [];
     try {
       const stored = localStorage.getItem(CMS_PROMPTS_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+        if (Array.isArray(parsed)) {
+          // Filter out legacy random mock prompts so only user/admin promos appear
+          const cleanUserPrompts = parsed.filter(
+            (p) =>
+              p &&
+              p.id &&
+              !p.id.startsWith("prompt-") &&
+              !p.id.startsWith("seed-") &&
+              !p.title?.includes("Mastering the Art of the Sketchbook") &&
+              !p.title?.includes("Vintage Countryside Picnic")
+          );
+          return cleanUserPrompts;
         }
       }
     } catch {
-      // fallback to seed
+      // fallback
     }
-
-    try {
-      localStorage.setItem(CMS_PROMPTS_KEY, JSON.stringify(SEED_PROMPTS));
-    } catch {
-      // ignore
-    }
-    return SEED_PROMPTS;
+    return [];
   }
 
   public static getPublishedPrompts(): CmsPrompt[] {
@@ -394,25 +398,29 @@ export class CmsService {
   public static savePrompt(prompt: Partial<CmsPrompt>): CmsPrompt {
     const all = this.getPrompts();
     const isNew = !prompt.id;
-    const id = prompt.id || `prompt-${Date.now()}`;
+    const id = prompt.id || `promo-${Date.now()}`;
     const now = new Date().toISOString();
+
+    const category = prompt.category || "Lifestyle Photography";
+    const promptBody = prompt.promptBody || "";
+    const title = prompt.title || category || (promptBody ? promptBody.slice(0, 40) + "..." : "Promo Style");
 
     const fullPrompt: CmsPrompt = {
       id,
-      title: prompt.title || "Untitled Trending Prompt",
-      promptBody: prompt.promptBody || "",
-      imageUrl: prompt.imageUrl || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800&auto=format&fit=crop&q=80",
-      category: prompt.category || "Lifestyle Photography",
-      tags: prompt.tags || ["Trending", "AI Photo"],
+      title,
+      promptBody,
+      imageUrl: prompt.imageUrl || "",
+      category,
+      tags: prompt.tags || [category],
       status: prompt.status || "published",
       copiesCount: prompt.copiesCount || 0,
       viewsCount: prompt.viewsCount || 1,
       createdAt: prompt.createdAt || now,
       updatedAt: now,
-      midjourneyFormat: prompt.midjourneyFormat || `${prompt.promptBody || ""} --ar 4:5 --v 6.1`,
-      leonardoFormat: prompt.leonardoFormat || `${prompt.promptBody || ""} --strength 0.88`,
-      fluxFormat: prompt.fluxFormat || `${prompt.promptBody || ""}`,
-      dalleFormat: prompt.dalleFormat || `${prompt.promptBody || ""}`,
+      midjourneyFormat: prompt.midjourneyFormat || `${promptBody} --ar 4:5 --v 6.1`,
+      leonardoFormat: prompt.leonardoFormat || `${promptBody} --strength 0.88`,
+      fluxFormat: prompt.fluxFormat || promptBody,
+      dalleFormat: prompt.dalleFormat || promptBody,
       negativePrompt: prompt.negativePrompt || "low quality, distorted face, plastic skin, bad anatomy",
       author: prompt.author || "Administrator",
       aspectRatio: prompt.aspectRatio || "portrait",

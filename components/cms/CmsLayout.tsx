@@ -31,8 +31,47 @@ import {
   Wand2,
   Layers,
   AlertCircle,
+  Image as ImageIcon,
 } from "lucide-react";
 import { CmsPrompt, CmsService, CmsSettings, CmsRequestedPrompt } from "@/services/cmsService";
+
+// Helper to compress uploaded images to high-quality lightweight data URLs (<80KB)
+const compressImageFile = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const maxDim = 800;
+        let width = img.width;
+        let height = img.height;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL("image/jpeg", 0.8));
+        } else {
+          resolve((event.target?.result as string) || "");
+        }
+      };
+      img.onerror = () => reject(new Error("Failed to process image"));
+      img.src = event.target?.result as string;
+    };
+    reader.onerror = (err) => reject(err);
+    reader.readAsDataURL(file);
+  });
+};
 
 interface CmsLayoutProps {
   onBackToSite: () => void;
@@ -49,11 +88,12 @@ export function CmsLayout({ onBackToSite, onLogout, showToast }: CmsLayoutProps)
   const [settings, setSettings] = useState<CmsSettings>(() => CmsService.getSettings());
   const [requestedPrompts, setRequestedPrompts] = useState<CmsRequestedPrompt[]>(() => CmsService.getRequestedPrompts());
 
-  // Quick Draft State
-  const [quickTitle, setQuickTitle] = useState("");
-  const [quickBody, setQuickBody] = useState("");
+  // Quick Promo State (Strictly 3 fields: Category, Image, Promo)
+  const [quickCategory, setQuickCategory] = useState("Lifestyle Photography");
+  const [quickImageUrl, setQuickImageUrl] = useState("");
+  const [quickPromo, setQuickPromo] = useState("");
 
-  // Edit / Add Modal State
+  // Edit / Add Modal State (Strictly 3 fields: Category, Image, Promo)
   const [editingPrompt, setEditingPrompt] = useState<Partial<CmsPrompt> | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
@@ -73,6 +113,8 @@ export function CmsLayout({ onBackToSite, onLogout, showToast }: CmsLayoutProps)
   const [categoryFilter, setCategoryFilter] = useState("All");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const quickFileInputRef = useRef<HTMLInputElement>(null);
+  const modalFileInputRef = useRef<HTMLInputElement>(null);
 
   const stats = CmsService.getStats();
 
@@ -92,25 +134,26 @@ export function CmsLayout({ onBackToSite, onLogout, showToast }: CmsLayoutProps)
     };
   }, []);
 
-  // Quick Prompt Draft Handler
-  const handleSaveQuickDraft = (e: React.FormEvent) => {
+  // Quick Promo Handler (Category, Image, Promo)
+  const handleSaveQuickPromo = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!quickTitle.trim() || !quickBody.trim()) {
-      showToast("error", "Please provide both title and prompt text.");
+    if (!quickPromo.trim()) {
+      showToast("error", "Please write the promo text.");
       return;
     }
 
     CmsService.savePrompt({
-      title: quickTitle.trim(),
-      promptBody: quickBody.trim(),
-      status: "draft",
-      category: "Lifestyle Photography",
+      category: quickCategory,
+      imageUrl: quickImageUrl.trim(),
+      promptBody: quickPromo.trim(),
+      status: "published",
+      title: quickCategory,
     });
 
-    setQuickTitle("");
-    setQuickBody("");
+    setQuickPromo("");
+    setQuickImageUrl("");
     refreshData();
-    showToast("success", "Prompt draft saved successfully!");
+    showToast("success", "Promo card published to the front page!");
   };
 
   // Status toggle
@@ -122,47 +165,49 @@ export function CmsLayout({ onBackToSite, onLogout, showToast }: CmsLayoutProps)
 
   // Delete Prompt
   const handleDeletePrompt = (id: string, title: string) => {
-    if (confirm(`Are you sure you want to delete "${title}"?`)) {
+    if (confirm(`Are you sure you want to delete this promo?`)) {
       CmsService.deletePrompt(id);
       refreshData();
-      showToast("info", "Prompt deleted.");
+      showToast("info", "Promo card deleted.");
     }
   };
 
-  // Open Edit Modal
+  // Open Edit Modal with strictly 3 fields: Category, Image, Promo
   const handleOpenEdit = (prompt?: CmsPrompt) => {
     if (prompt) {
       setEditingPrompt({ ...prompt });
     } else {
       setEditingPrompt({
-        title: "",
         category: "Lifestyle Photography",
-        imageUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800&auto=format&fit=crop&q=80",
+        imageUrl: "",
         promptBody: "",
-        midjourneyFormat: "",
-        leonardoFormat: "",
-        fluxFormat: "",
-        negativePrompt: "lowres, distorted face, plastic skin, bad anatomy, deformed fingers",
-        tags: ["Trending", "AI Photo Prompt"],
         status: "published",
       });
     }
     setIsEditModalOpen(true);
   };
 
-  // Save Prompt in Modal
+  // Save Prompt in Modal (No title field, strictly category, image, promo)
   const handleSaveEditModal = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingPrompt?.title?.trim() || !editingPrompt?.promptBody?.trim()) {
-      showToast("error", "Title and prompt text are required.");
+    if (!editingPrompt?.promptBody?.trim()) {
+      showToast("error", "Promo prompt text is required.");
       return;
     }
 
-    CmsService.savePrompt(editingPrompt);
+    CmsService.savePrompt({
+      ...editingPrompt,
+      category: editingPrompt.category || "Lifestyle Photography",
+      imageUrl: editingPrompt.imageUrl || "",
+      promptBody: editingPrompt.promptBody || "",
+      title: editingPrompt.category || "Trending Promo",
+      status: "published",
+    });
+
     setIsEditModalOpen(false);
     setEditingPrompt(null);
     refreshData();
-    showToast("success", "Prompt published and live on the front page!");
+    showToast("success", "Promo published and live on the front page!");
   };
 
   // Gemini AI Wizard Generator
@@ -567,50 +612,121 @@ export function CmsLayout({ onBackToSite, onLogout, showToast }: CmsLayoutProps)
 
               {/* Lower 2-Column Section (Quick Draft + Recently Published Prompts) */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                {/* Left Column: Quick Prompt Draft (4 cols) */}
+                {/* Left Column: Quick Promo (Strictly 3 fields: Category, Image, Promo) */}
                 <div className="lg:col-span-5 p-5 rounded-3xl bg-slate-900 border border-slate-800 space-y-4">
                   <div>
                     <div className="flex items-center gap-2 text-sm font-bold text-white">
                       <Sparkles className="w-4 h-4 text-blue-400" />
-                      <span>Quick Prompt Draft</span>
+                      <span>Add Promo to Front Page</span>
                     </div>
                     <p className="text-xs text-slate-400 mt-0.5">
-                      Jot down a prompt idea quickly to save it as a draft for later editing.
+                      Create and publish a card directly to the front page in three quick fields.
                     </p>
                   </div>
 
-                  <form onSubmit={handleSaveQuickDraft} className="space-y-3.5">
+                  <form onSubmit={handleSaveQuickPromo} className="space-y-3.5">
+                    {/* 1. Category */}
                     <div>
                       <label className="text-xs font-semibold text-slate-300 block mb-1">
-                        Prompt Title
+                        Category
                       </label>
-                      <input
-                        type="text"
-                        value={quickTitle}
-                        onChange={(e) => setQuickTitle(e.target.value)}
-                        placeholder="e.g. Neon Cyberpunk Alleyway in Rain..."
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder:text-slate-600 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-                      />
+                      <select
+                        value={quickCategory}
+                        onChange={(e) => setQuickCategory(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="Lifestyle Photography">Lifestyle Photography</option>
+                        <option value="Fashion & Editorial Photography">Fashion & Editorial Photography</option>
+                        <option value="Photorealistic & Portraits">Photorealistic & Portraits</option>
+                        <option value="Digital Art & Creative Portraiture">Digital Art & Creative Portraiture</option>
+                        <option value="Cinematic & Conceptual">Cinematic & Conceptual</option>
+                        <option value="Anime & Illustration">Anime & Illustration</option>
+                        <option value="Architecture & Interior">Architecture & Interior</option>
+                        <option value="Product & Commercial">Product & Commercial</option>
+                      </select>
                     </div>
 
+                    {/* 2. Image */}
                     <div>
                       <label className="text-xs font-semibold text-slate-300 block mb-1">
-                        Prompt Body
+                        Promo Image
+                      </label>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={quickImageUrl}
+                            onChange={(e) => setQuickImageUrl(e.target.value)}
+                            placeholder="Paste image URL (or upload below)..."
+                            className="flex-1 px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder:text-slate-600 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                          />
+                          <input
+                            type="file"
+                            ref={quickFileInputRef}
+                            accept="image/*"
+                            className="hidden"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                try {
+                                  const compressed = await compressImageFile(file);
+                                  setQuickImageUrl(compressed);
+                                  showToast("success", "Image uploaded and compressed!");
+                                } catch {
+                                  showToast("error", "Failed to upload image.");
+                                }
+                              }
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => quickFileInputRef.current?.click()}
+                            className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 shrink-0 border border-slate-700 transition-colors"
+                          >
+                            <Upload className="w-3.5 h-3.5" />
+                            <span>Upload</span>
+                          </button>
+                        </div>
+
+                        {quickImageUrl && (
+                          <div className="relative w-full h-32 rounded-xl overflow-hidden bg-slate-950 border border-slate-800 group">
+                            <img
+                              src={quickImageUrl}
+                              alt="Promo Preview"
+                              className="w-full h-full object-cover"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setQuickImageUrl("")}
+                              className="absolute top-2 right-2 p-1 rounded-lg bg-black/70 text-white hover:bg-red-600 transition-colors text-[10px]"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* 3. Promo */}
+                    <div>
+                      <label className="text-xs font-semibold text-slate-300 block mb-1">
+                        Place to Add Promo (Prompt Text)
                       </label>
                       <textarea
                         rows={4}
-                        value={quickBody}
-                        onChange={(e) => setQuickBody(e.target.value)}
-                        placeholder="Paste the prompt text here..."
+                        required
+                        value={quickPromo}
+                        onChange={(e) => setQuickPromo(e.target.value)}
+                        placeholder="Enter the promo prompt text here. Users can click this card on the front page to view the prompt print on the side..."
                         className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder:text-slate-600 focus:outline-hidden focus:ring-2 focus:ring-blue-500 resize-none font-mono"
                       />
                     </div>
 
                     <button
                       type="submit"
-                      className="w-full py-2.5 px-4 rounded-xl bg-white hover:bg-slate-200 text-slate-950 font-bold text-xs transition-all active:scale-95"
+                      className="w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition-all active:scale-95 shadow-md"
                     >
-                      Save as Draft
+                      Publish Promo Card to Front Page
                     </button>
                   </form>
                 </div>
@@ -619,7 +735,7 @@ export function CmsLayout({ onBackToSite, onLogout, showToast }: CmsLayoutProps)
                 <div className="lg:col-span-7 p-5 rounded-3xl bg-slate-900 border border-slate-800 space-y-4">
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm font-bold text-white">
-                      Recently Published Prompts
+                      Live Promo Cards
                     </h3>
                     <button
                       onClick={() => setActiveMenu("all_prompts")}
@@ -629,43 +745,76 @@ export function CmsLayout({ onBackToSite, onLogout, showToast }: CmsLayoutProps)
                     </button>
                   </div>
 
-                  <div className="space-y-2.5 divide-y divide-slate-800/60">
-                    {prompts.slice(0, 5).map((p) => (
-                      <div key={p.id} className="pt-2.5 first:pt-0 flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <img
-                            src={p.imageUrl}
-                            alt={p.title}
-                            className="w-10 h-10 rounded-lg object-cover shrink-0 border border-slate-800"
-                          />
-                          <div className="min-w-0">
-                            <h4 className="text-xs font-bold text-white truncate hover:text-blue-400 transition-colors cursor-pointer" onClick={() => handleOpenEdit(p)}>
-                              {p.title}
-                            </h4>
-                            <p className="text-[11px] text-slate-400 truncate">
-                              {p.category} • {p.copiesCount} copies
-                            </p>
+                  {prompts.length === 0 ? (
+                    <div className="py-12 text-center space-y-2 border border-dashed border-slate-800 rounded-2xl p-6">
+                      <div className="w-10 h-10 rounded-xl bg-slate-800/80 text-slate-400 mx-auto flex items-center justify-center">
+                        <ImageIcon className="w-5 h-5 opacity-60" />
+                      </div>
+                      <p className="text-xs font-semibold text-slate-300">No Promos Added Yet</p>
+                      <p className="text-[11px] text-slate-500 max-w-xs mx-auto">
+                        Fill out the 3 fields on the left to publish your first promo card to the front page!
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5 divide-y divide-slate-800/60">
+                      {prompts.slice(0, 5).map((p) => (
+                        <div key={p.id} className="pt-2.5 first:pt-0 flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            {p.imageUrl ? (
+                              <img
+                                src={p.imageUrl}
+                                alt={p.category}
+                                className="w-12 h-12 rounded-lg object-cover shrink-0 border border-slate-800"
+                              />
+                            ) : (
+                              <div className="w-12 h-12 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-center text-slate-500 shrink-0">
+                                <ImageIcon className="w-5 h-5 opacity-40" />
+                              </div>
+                            )}
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-blue-950 text-blue-300 border border-blue-800/40">
+                                  {p.category}
+                                </span>
+                                <span className="text-[10px] text-slate-400">
+                                  {p.copiesCount} copies
+                                </span>
+                              </div>
+                              <p
+                                className="text-xs text-slate-200 truncate mt-1 cursor-pointer hover:text-blue-400 transition-colors font-mono"
+                                onClick={() => handleOpenEdit(p)}
+                              >
+                                {p.promptBody}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800/60">
+                              {p.status}
+                            </span>
+                            <button
+                              onClick={() => handleOpenEdit(p)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                              title="Edit Promo"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeletePrompt(p.id, p.category)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-slate-800 transition-colors"
+                              title="Delete Promo"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         </div>
-
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800/60">
-                            {p.status}
-                          </span>
-                          <button
-                            onClick={() => handleOpenEdit(p)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-                            title="Edit Prompt"
-                          >
-                            <Edit3 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
 
                   <div className="pt-3 border-t border-slate-800 flex items-center justify-between text-xs text-slate-500">
-                    <span>Showing top 5 latest prompts</span>
+                    <span>Showing top 5 latest promos</span>
                     <button
                       onClick={() => handleOpenEdit()}
                       className="text-blue-400 font-bold hover:underline"
@@ -678,21 +827,21 @@ export function CmsLayout({ onBackToSite, onLogout, showToast }: CmsLayoutProps)
             </div>
           )}
 
-          {/* MENU 2: ALL PROMPTS / ARTICLES */}
+          {/* MENU 2: ALL PROMPTS / PROMOS */}
           {activeMenu === "all_prompts" && (
             <div className="space-y-6 max-w-6xl mx-auto">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-xl font-black text-white">All Prompts & Articles ({prompts.length})</h2>
-                  <p className="text-xs text-slate-400">Manage, edit, publish or draft your trending prompts.</p>
+                  <h2 className="text-xl font-black text-white">All Promo Cards ({prompts.length})</h2>
+                  <p className="text-xs text-slate-400">Manage, edit, publish or draft promo cards on the front page.</p>
                 </div>
 
                 <button
                   onClick={() => handleOpenEdit()}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-sm"
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-sm transition-all active:scale-95"
                 >
                   <PlusCircle className="w-4 h-4" />
-                  <span>Add New Prompt</span>
+                  <span>Add Promo Card</span>
                 </button>
               </div>
 
@@ -704,7 +853,7 @@ export function CmsLayout({ onBackToSite, onLogout, showToast }: CmsLayoutProps)
                     type="text"
                     value={promptSearch}
                     onChange={(e) => setPromptSearch(e.target.value)}
-                    placeholder="Search by title, prompt text, or tag..."
+                    placeholder="Search by category or prompt text..."
                     className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -720,6 +869,9 @@ export function CmsLayout({ onBackToSite, onLogout, showToast }: CmsLayoutProps)
                   <option value="Photorealistic & Portraits">Photorealistic & Portraits</option>
                   <option value="Digital Art & Creative Portraiture">Digital Art & Creative Portraiture</option>
                   <option value="Cinematic & Conceptual">Cinematic & Conceptual</option>
+                  <option value="Anime & Illustration">Anime & Illustration</option>
+                  <option value="Architecture & Interior">Architecture & Interior</option>
+                  <option value="Product & Commercial">Product & Commercial</option>
                 </select>
               </div>
 
@@ -728,7 +880,7 @@ export function CmsLayout({ onBackToSite, onLogout, showToast }: CmsLayoutProps)
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
                     <tr className="bg-slate-950/80 border-b border-slate-800 text-slate-400 uppercase text-[10px] font-bold tracking-wider">
-                      <th className="p-3.5">Prompt</th>
+                      <th className="p-3.5">Promo Card</th>
                       <th className="p-3.5 hidden md:table-cell">Category</th>
                       <th className="p-3.5 hidden sm:table-cell">Status</th>
                       <th className="p-3.5">Copies</th>
@@ -741,22 +893,28 @@ export function CmsLayout({ onBackToSite, onLogout, showToast }: CmsLayoutProps)
                         const matchesCat = categoryFilter === "All" || p.category === categoryFilter;
                         const matchesText =
                           !promptSearch.trim() ||
-                          p.title.toLowerCase().includes(promptSearch.toLowerCase()) ||
-                          p.promptBody.toLowerCase().includes(promptSearch.toLowerCase());
+                          (p.category && p.category.toLowerCase().includes(promptSearch.toLowerCase())) ||
+                          (p.promptBody && p.promptBody.toLowerCase().includes(promptSearch.toLowerCase()));
                         return matchesCat && matchesText;
                       })
                       .map((p) => (
                         <tr key={p.id} className="hover:bg-slate-800/40 transition-colors">
                           <td className="p-3.5">
                             <div className="flex items-center gap-3">
-                              <img
-                                src={p.imageUrl}
-                                alt={p.title}
-                                className="w-12 h-12 rounded-lg object-cover shrink-0 border border-slate-800"
-                              />
+                              {p.imageUrl ? (
+                                <img
+                                  src={p.imageUrl}
+                                  alt={p.category}
+                                  className="w-12 h-12 rounded-lg object-cover shrink-0 border border-slate-800"
+                                />
+                              ) : (
+                                <div className="w-12 h-12 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-center text-slate-500 shrink-0">
+                                  <ImageIcon className="w-5 h-5 opacity-40" />
+                                </div>
+                              )}
                               <div className="min-w-0 max-w-sm">
-                                <h4 className="font-bold text-white truncate">{p.title}</h4>
-                                <p className="text-slate-400 text-[11px] line-clamp-1">{p.promptBody}</p>
+                                <span className="font-bold text-white text-xs block truncate">{p.category}</span>
+                                <p className="text-slate-400 text-[11px] line-clamp-1 font-mono">{p.promptBody}</p>
                               </div>
                             </div>
                           </td>
@@ -785,7 +943,7 @@ export function CmsLayout({ onBackToSite, onLogout, showToast }: CmsLayoutProps)
                                 <Edit3 className="w-4 h-4" />
                               </button>
                               <button
-                                onClick={() => handleDeletePrompt(p.id, p.title)}
+                                onClick={() => handleDeletePrompt(p.id, p.category)}
                                 className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-slate-800"
                                 title="Delete"
                               >
@@ -795,6 +953,14 @@ export function CmsLayout({ onBackToSite, onLogout, showToast }: CmsLayoutProps)
                           </td>
                         </tr>
                       ))}
+
+                    {prompts.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="py-10 text-center text-slate-500 text-xs">
+                          No promo cards found. Click &quot;Add Promo Card&quot; to create your first card!
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -1176,15 +1342,20 @@ export function CmsLayout({ onBackToSite, onLogout, showToast }: CmsLayoutProps)
         </main>
       </div>
 
-      {/* MODAL 1: ADD / EDIT PROMPT MODAL */}
+      {/* MODAL 1: ADD / EDIT PROMO MODAL (STRICTLY 3 FIELDS: CATEGORY, IMAGE, PROMO) */}
       {isEditModalOpen && editingPrompt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs">
-          <div className="w-full max-w-2xl max-h-[90vh] bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95">
+          <div className="w-full max-w-xl max-h-[90vh] bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95">
             {/* Modal Header */}
             <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
-              <h3 className="text-base font-bold text-white">
-                {editingPrompt.id ? "Edit Prompt Card" : "Add New Prompt to Front Page"}
-              </h3>
+              <div>
+                <h3 className="text-base font-bold text-white">
+                  {editingPrompt.id ? "Edit Promo Card" : "Add Promo Card to Front Page"}
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Card will display on the front page with side drawer prompt print.
+                </p>
+              </div>
               <button
                 onClick={() => setIsEditModalOpen(false)}
                 className="p-1 rounded-lg text-slate-400 hover:text-white"
@@ -1193,110 +1364,101 @@ export function CmsLayout({ onBackToSite, onLogout, showToast }: CmsLayoutProps)
               </button>
             </div>
 
-            {/* Modal Scrollable Body */}
+            {/* Modal Scrollable Body - Strictly 3 Fields */}
             <form onSubmit={handleSaveEditModal} className="flex-1 overflow-y-auto p-5 space-y-4 text-xs">
-              {/* Title */}
+              {/* 1. Category */}
               <div className="space-y-1">
-                <label className="font-semibold text-slate-300 block">Prompt Title</label>
-                <input
-                  type="text"
-                  required
-                  value={editingPrompt.title || ""}
-                  onChange={(e) => setEditingPrompt({ ...editingPrompt, title: e.target.value })}
-                  placeholder="e.g. Vintage Countryside Picnic Couple Portrait"
-                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white"
-                />
+                <label className="font-semibold text-slate-300 block">Category</label>
+                <select
+                  value={editingPrompt.category || "Lifestyle Photography"}
+                  onChange={(e) => setEditingPrompt({ ...editingPrompt, category: e.target.value })}
+                  className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="Lifestyle Photography">Lifestyle Photography</option>
+                  <option value="Fashion & Editorial Photography">Fashion & Editorial Photography</option>
+                  <option value="Photorealistic & Portraits">Photorealistic & Portraits</option>
+                  <option value="Digital Art & Creative Portraiture">Digital Art & Creative Portraiture</option>
+                  <option value="Cinematic & Conceptual">Cinematic & Conceptual</option>
+                  <option value="Anime & Illustration">Anime & Illustration</option>
+                  <option value="Architecture & Interior">Architecture & Interior</option>
+                  <option value="Product & Commercial">Product & Commercial</option>
+                </select>
               </div>
 
-              {/* Category & Status */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-300 block">Category</label>
-                  <select
-                    value={editingPrompt.category || "Lifestyle Photography"}
-                    onChange={(e) => setEditingPrompt({ ...editingPrompt, category: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white"
+              {/* 2. Image */}
+              <div className="space-y-2">
+                <label className="font-semibold text-slate-300 block">Promo Image</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={editingPrompt.imageUrl || ""}
+                    onChange={(e) => setEditingPrompt({ ...editingPrompt, imageUrl: e.target.value })}
+                    placeholder="Paste image URL (or upload below)..."
+                    className="flex-1 px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white placeholder:text-slate-600 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                  />
+                  <input
+                    type="file"
+                    ref={modalFileInputRef}
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        try {
+                          const compressed = await compressImageFile(file);
+                          setEditingPrompt({ ...editingPrompt, imageUrl: compressed });
+                          showToast("success", "Image uploaded successfully!");
+                        } catch {
+                          showToast("error", "Failed to upload image.");
+                        }
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => modalFileInputRef.current?.click()}
+                    className="px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 shrink-0 border border-slate-700 transition-colors"
                   >
-                    <option value="Lifestyle Photography">Lifestyle Photography</option>
-                    <option value="Fashion & Editorial Photography">Fashion & Editorial Photography</option>
-                    <option value="Photorealistic & Portraits">Photorealistic & Portraits</option>
-                    <option value="Digital Art & Creative Portraiture">Digital Art & Creative Portraiture</option>
-                    <option value="Cinematic & Conceptual">Cinematic & Conceptual</option>
-                  </select>
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Upload</span>
+                  </button>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-300 block">Publish Status</label>
-                  <select
-                    value={editingPrompt.status || "published"}
-                    onChange={(e) => setEditingPrompt({ ...editingPrompt, status: e.target.value as "published" | "draft" })}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white"
-                  >
-                    <option value="published">Published (Live on Front Page)</option>
-                    <option value="draft">Draft (Unpublished)</option>
-                  </select>
+                {editingPrompt.imageUrl && (
+                  <div className="relative w-full h-44 rounded-2xl overflow-hidden bg-slate-950 border border-slate-800">
+                    <img
+                      src={editingPrompt.imageUrl}
+                      alt="Promo Preview"
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setEditingPrompt({ ...editingPrompt, imageUrl: "" })}
+                      className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/70 text-white hover:bg-red-600 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* 3. Place to Add Promo (Prompt Text) */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="font-semibold text-slate-300 block">
+                    Place to Add Promo (Prompt Text)
+                  </label>
+                  <span className="text-[10px] text-slate-500 font-mono">
+                    {editingPrompt.promptBody?.length || 0} chars
+                  </span>
                 </div>
-              </div>
-
-              {/* Image URL */}
-              <div className="space-y-1">
-                <label className="font-semibold text-slate-300 block">Reference Image URL (Unsplash or CDN)</label>
-                <input
-                  type="url"
-                  required
-                  value={editingPrompt.imageUrl || ""}
-                  onChange={(e) => setEditingPrompt({ ...editingPrompt, imageUrl: e.target.value })}
-                  placeholder="https://images.unsplash.com/photo-..."
-                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white"
-                />
-              </div>
-
-              {/* Master Prompt Body */}
-              <div className="space-y-1">
-                <label className="font-semibold text-slate-300 block">Master Prompt Text</label>
                 <textarea
-                  rows={4}
+                  rows={5}
                   required
                   value={editingPrompt.promptBody || ""}
                   onChange={(e) => setEditingPrompt({ ...editingPrompt, promptBody: e.target.value })}
-                  placeholder="Full detailed photographic and visual prompt..."
-                  className="w-full p-3 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono text-xs"
-                />
-              </div>
-
-              {/* Midjourney Format */}
-              <div className="space-y-1">
-                <label className="font-semibold text-slate-300 block">Midjourney Format (--ar, --v, --style)</label>
-                <input
-                  type="text"
-                  value={editingPrompt.midjourneyFormat || ""}
-                  onChange={(e) => setEditingPrompt({ ...editingPrompt, midjourneyFormat: e.target.value })}
-                  placeholder="... --ar 4:5 --v 6.1"
-                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono"
-                />
-              </div>
-
-              {/* Leonardo Format */}
-              <div className="space-y-1">
-                <label className="font-semibold text-slate-300 block">Leonardo.ai Format (--strength)</label>
-                <input
-                  type="text"
-                  value={editingPrompt.leonardoFormat || ""}
-                  onChange={(e) => setEditingPrompt({ ...editingPrompt, leonardoFormat: e.target.value })}
-                  placeholder="... --strength 0.88"
-                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono"
-                />
-              </div>
-
-              {/* Negative Prompt */}
-              <div className="space-y-1">
-                <label className="font-semibold text-slate-300 block">Negative Prompt (Weights & Exclusions)</label>
-                <input
-                  type="text"
-                  value={editingPrompt.negativePrompt || ""}
-                  onChange={(e) => setEditingPrompt({ ...editingPrompt, negativePrompt: e.target.value })}
-                  placeholder="lowres, bad anatomy, deformed fingers..."
-                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono"
+                  placeholder="Enter the prompt text / promotion here. When the user clicks this photo card on the front page, this exact prompt print will be automatically displayed on the side drawer for copying..."
+                  className="w-full p-3.5 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono text-xs focus:outline-hidden focus:ring-2 focus:ring-blue-500 resize-none leading-relaxed"
                 />
               </div>
 
@@ -1305,16 +1467,16 @@ export function CmsLayout({ onBackToSite, onLogout, showToast }: CmsLayoutProps)
                 <button
                   type="button"
                   onClick={() => setIsEditModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold"
+                  className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold"
                 >
                   Cancel
                 </button>
 
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold shadow-md"
+                  className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold shadow-md transition-all active:scale-95"
                 >
-                  Save & Publish to Front Page
+                  Publish Promo Card to Front Page
                 </button>
               </div>
             </form>
