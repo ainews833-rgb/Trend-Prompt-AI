@@ -15,20 +15,24 @@ import {
   FileText,
   Filter,
 } from "lucide-react";
-import { GeneratedPromptResult, PromptMode } from "@/types";
+import { GeneratedPromptResult, PromptMode, User } from "@/types";
 import { HistoryService } from "@/services/historyService";
 
 interface HistoryViewProps {
+  user?: User;
   onlyFavorites?: boolean;
   onOpenPrompt: (prompt: GeneratedPromptResult) => void;
   onNewPrompt: () => void;
+  onOpenUpgrade?: () => void;
   showToast: (type: "success" | "error" | "info", message: string) => void;
 }
 
 export function HistoryView({
+  user,
   onlyFavorites = false,
   onOpenPrompt,
   onNewPrompt,
+  onOpenUpgrade,
   showToast,
 }: HistoryViewProps) {
   const [searchQuery, setSearchQuery] = useState("");
@@ -36,6 +40,12 @@ export function HistoryView({
   const [sortBy, setSortBy] = useState<"newest" | "oldest">("newest");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
+
+  const userPlan = user?.plan || "free";
+  const maxFavorites = HistoryService.getMaxFavorites(userPlan);
+  const currentFavoritesCount = useMemo(() => {
+    return HistoryService.getFavoritesCount();
+  }, [version]);
 
   const prompts = useMemo(() => {
     // version dependency ensures re-filtering on deletion or favorite toggle
@@ -50,8 +60,13 @@ export function HistoryView({
   };
 
   const handleToggleFavorite = (id: string) => {
-    const isFav = HistoryService.toggleFavorite(id);
-    showToast("info", isFav ? "Added to favorites" : "Removed from favorites");
+    const res = HistoryService.toggleFavorite(id, userPlan);
+    if (!res.success) {
+      showToast("error", res.reason || "Favorites limit reached.");
+      if (onOpenUpgrade) onOpenUpgrade();
+      return;
+    }
+    showToast("info", res.isFavorited ? "Added to favorites" : "Removed from favorites");
     setVersion((v) => v + 1);
   };
 
@@ -66,31 +81,67 @@ export function HistoryView({
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/80 dark:border-slate-800 pb-4">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
-            {onlyFavorites ? (
-              <>
-                <Bookmark className="w-6 h-6 text-amber-500 fill-amber-500" />
-                <span>Favorite Prompts</span>
-              </>
-            ) : (
-              <span>Prompt History &amp; Saved Trends</span>
-            )}
-          </h2>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+          <div className="flex items-center gap-3">
+            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+              {onlyFavorites ? (
+                <>
+                  <Bookmark className="w-6 h-6 text-amber-500 fill-amber-500" />
+                  <span>Favorite Prompts</span>
+                </>
+              ) : (
+                <span>Prompt History &amp; Saved Trends</span>
+              )}
+            </h2>
+            <span className="text-xs px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold">
+              Favorites: {currentFavoritesCount} / {maxFavorites} ({userPlan === "pro" || userPlan === "creator" ? "Pro Plan" : "Free Plan"})
+            </span>
+          </div>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
             {onlyFavorites
-              ? "All your favorited and bookmarked prompt generations in one place."
+              ? `All your favorited prompts (${currentFavoritesCount} of ${maxFavorites} allowed on ${userPlan === "pro" || userPlan === "creator" ? "Pro Plan" : "Free Plan"}).`
               : "Access, search, filter, and reuse all your past visual trend deconstructions."}
           </p>
         </div>
 
-        <button
-          onClick={onNewPrompt}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition-colors self-start sm:self-auto"
-        >
-          <Wand2 className="w-3.5 h-3.5" />
-          <span>New Prompt</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {userPlan === "free" && currentFavoritesCount >= maxFavorites && onOpenUpgrade && (
+            <button
+              onClick={onOpenUpgrade}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shadow-xs transition-colors"
+            >
+              <span>Upgrade to Pro (25 Favs)</span>
+            </button>
+          )}
+
+          <button
+            onClick={onNewPrompt}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition-colors self-start sm:self-auto"
+          >
+            <Wand2 className="w-3.5 h-3.5" />
+            <span>New Prompt</span>
+          </button>
+        </div>
       </div>
+
+      {/* Plan limit warning banner if on free and at limit */}
+      {userPlan === "free" && currentFavoritesCount >= maxFavorites && (
+        <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2.5 text-amber-800 dark:text-amber-300">
+            <Bookmark className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>
+              <strong>Free Plan Limit Reached:</strong> You have saved {currentFavoritesCount}/5 favorite prompts. Upgrade to Pro Plan to store up to 25 favorites.
+            </span>
+          </div>
+          {onOpenUpgrade && (
+            <button
+              onClick={onOpenUpgrade}
+              className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold shrink-0 self-start sm:self-auto"
+            >
+              Upgrade to Pro
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Filter and Search Controls */}
       <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">

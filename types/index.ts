@@ -72,9 +72,17 @@ export interface GeneratedPromptResult {
   midjourneyFormat: string;
   fluxFormat: string;
   dalleFormat: string;
+  leonardoFormat?: string;
   negativePrompt?: string;
   characterRefCommand?: string;
   faceLockGuaranteed?: boolean;
+  trendElevationSummary?: string;
+  toolInstructions?: {
+    midjourney: string;
+    leonardo: string;
+    chatgpt: string;
+    flux: string;
+  };
   structuredAnalysis: StructuredAnalysis;
   trendInsights: TrendInsights;
   mode: PromptMode;

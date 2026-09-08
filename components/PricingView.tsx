@@ -19,7 +19,7 @@ interface PricingViewProps {
   onClose?: () => void;
   isModal?: boolean;
   showToast: (type: "success" | "error" | "info", message: string) => void;
-  onUpgradeSuccess: (newPlan: "pro" | "creator") => void;
+  onUpgradeSuccess: (newPlan: "pro") => void;
 }
 
 export function PricingView({
@@ -35,60 +35,43 @@ export function PricingView({
   const plans = [
     {
       id: "free",
-      name: "Free Starter",
-      tagline: "Explore visual trends and test AI prompt synthesis.",
+      name: "Free Plan",
+      tagline: "Explore visual trends and reverse-engineer prompt aesthetics.",
       priceMonthly: 0,
       priceAnnually: 0,
       creditsIncluded: "10 free analyses",
       features: [
         "10 Free AI visual trend analyses",
-        "Universal & Midjourney prompt export",
-        "Standard composition deconstruction",
-        "Basic prompt refinement (Shorten)",
-        "Prompt history (up to 20 items)",
+        "Universal, Midjourney v6 & Flux prompt export",
+        "Standard composition & lighting deconstruction",
+        "Add up to 5 Favorite Prompts (Plan Limit)",
+        "Basic prompt refinement (Shorten / Expand)",
+        "Standard vision processing queue",
       ],
-      cta: "Current Tier",
+      cta: "Current Plan",
       current: user.plan === "free",
       popular: false,
     },
     {
       id: "pro",
-      name: "Pro Creator",
-      tagline: "For creators recreating trending aesthetics and daily photos.",
+      name: "Pro Plan",
+      tagline: "For creators putting their own face and photo into any viral trend.",
       priceMonthly: 19,
       priceAnnually: 15,
       creditsIncluded: "100 credits / month",
       features: [
         "100 AI visual deconstructions per month",
-        "All prompt modes (Cinematic, Commercial, Social)",
+        "Put Yourself in Any Trend with your own face photo",
+        "Add up to 25 Favorite Prompts (Plan Limit)",
+        "Strict facial anatomy lock (nose, ears, eye shape preserved)",
+        "All export formats (Midjourney v6.1, Flux.1, DALL-E 3)",
         "Full 14-dimension structured deconstruction",
-        "All export formats (Midjourney v6, Flux, DALL-E)",
-        "Personal photo identity-preservation engine",
-        "Unlimited saved history & favorites",
+        "Custom anti-distortion negative prompts",
         "Priority Gemini Vision processing speed",
       ],
-      cta: "Upgrade to Pro",
-      current: user.plan === "pro",
+      cta: "Upgrade to Pro Plan",
+      current: user.plan === "pro" || user.plan === "creator",
       popular: true,
-    },
-    {
-      id: "creator",
-      name: "Studio Team",
-      tagline: "For professional digital creators, agencies, and studios.",
-      priceMonthly: 39,
-      priceAnnually: 32,
-      creditsIncluded: "350 credits / month",
-      features: [
-        "350 credits per month + rollover",
-        "Commercial rights on all generated prompts",
-        "Batch analysis & high-resolution inspection",
-        "Custom style presets & team sharing",
-        "Direct export & webhooks ready",
-        "Dedicated creative prompt engineer support",
-      ],
-      cta: "Upgrade to Studio",
-      current: user.plan === "creator",
-      popular: false,
     },
   ];
 
@@ -104,10 +87,10 @@ export function PricingView({
 
     // Modular billing flow: updates local state ready for Stripe webhook
     setTimeout(() => {
-      CreditService.updatePlan(planId as "free" | "pro" | "creator");
-      onUpgradeSuccess(planId as "pro" | "creator");
+      CreditService.updatePlan(planId as "free" | "pro");
+      onUpgradeSuccess("pro");
       setSimulatingCheckout(null);
-      showToast("success", `Plan upgraded to ${planId.toUpperCase()}! Credits updated.`);
+      showToast("success", `Plan upgraded to ${planId === "pro" ? "Pro Plan" : "Free Plan"}! Credits and favorite limits updated.`);
       if (onClose) onClose();
     }, 800);
   };
@@ -168,7 +151,7 @@ export function PricingView({
       </div>
 
       {/* Plans Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
         {plans.map((plan) => {
           const price = billingCycle === "annually" ? plan.priceAnnually : plan.priceMonthly;
           const isSelected = plan.current;

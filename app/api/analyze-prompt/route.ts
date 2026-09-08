@@ -150,30 +150,32 @@ async function generateWithGemini(
   }
 
   const promptText = `
-You are TrendPrompt AI, an elite, world-class prompt engineer and professional photography director.
-Your core mission is to reverse-engineer the visual composition, lighting, camera angle, wardrobe, color grade, and atmosphere of the reference image, AND generate a prompt that strictly locks the user's authentic face, nose, ears, and body size without alteration.
+You are TrendPrompt AI, an elite visual director and world-class prompt engineer.
+Your core mission is to transform ANY uploaded image of a viral visual trend into a master prompt that allows users to place THEIR OWN FACE into that exact trend using any external AI tool (Midjourney, Leonardo.ai, Fooocus, Flux, Stable Diffusion, ChatGPT / DALL-E 3).
 
-CRITICAL USER REQUIREMENT (MANDATORY FIX):
-The user has reported that previously generated prompts altered their face: modifying their nose, changing their ear shape/size, and warping their body size into an unrecognizable AI plastic face.
-You MUST fix this with absolute professional precision:
-1. STRICT ANATOMICAL & IDENTITY PRESERVATION:
-   - Freeze the subject's authentic facial geometry: NO changing the nose (preserve exact bridge width, nasal tip contour, and nostril shape).
-   - Freeze authentic ears: preserve exact ear size, shape, angle, and earlobe structure.
-   - Freeze authentic eyes: preserve exact eye shape, eyelid fold, spacing, and brow arch.
-   - Freeze authentic body size: preserve natural body frame, build, and proportions with ZERO artificial slimming, muscle warping, or distortion.
-   - Forbid generic AI plastic skin: demand authentic micro-pores, natural dermal textures, and optical camera lens properties.
+CRITICAL USER SPECIFICATIONS:
+1. "MAKE THAT IMAGE LOOK GOOD, WHATEVER KIND OF PHOTO IT IS":
+   - The user might upload any kind of image: a low-res TikTok screenshot, a casual smartphone snap, an Instagram reel frame, or a fashion still.
+   - Analyze the image deeply: identify the viral trend aesthetic, composition, wardrobe, pose, and background.
+   - ELEVATE AND BEAUTIFY IT: Upgrade any poor lighting, flat exposure, or digital noise into magazine-grade, ultra-premium photography standards.
+   - Specify high-end optical gear: Hasselblad H6D or Leica M11, 85mm f/1.4 portrait prime lens, creamy circular bokeh, cinematic 3-point lighting (45° soft directional key, hair rim highlight, gentle catchlights), and natural Kodak Portra 400 film tones.
+   - Demand natural skin micro-pores and authentic textures—strictly forbid plastic AI smoothing or doll-like airbrushing.
 
-2. SCENE & TREND RECREATION:
-   - Precisely capture the reference image's composition (framing, camera distance, angle).
-   - Lighting setup (key light angle, fill ratio, rim lighting on hair/shoulders, color temperature).
-   - Wardrobe styling and color palette matching the reference trend.
-   - Background depth, optical bokeh (e.g. 85mm f/1.4 or 50mm f/1.8), and color grading.
+2. "THE ENTIRE TREND IS THE SAME, BUT ONLY THE USER'S FACE HAS CHANGED":
+   - The generated prompt must be designed so that when the user pastes it into their favorite AI generator and uploads their own selfie/photo:
+   - STRICT ANATOMICAL & IDENTITY LOCK:
+     * 100% preservation of authentic face: identical nose shape (bridge width, nasal tip contour, nostril shape).
+     * Identical ears: exact ear size, shape, position, and earlobe structure.
+     * Identical eye geometry: exact eye shape, eyelid contours, spacing, and natural brow arch.
+     * Identical body proportions: natural authentic body size and weight with ZERO artificial slimming or warping.
+   - The user's face is seamlessly integrated into the elevated trend scene (wardrobe, lighting, atmosphere, and background)!
 
-3. ADVANCED PARAMETERS & FORMATS:
-   - Full Prompt: Must start with the strict identity & anatomical preservation anchor, followed by the trend scene adaptation, lens specs, and negative exclusions.
-   - Midjourney: Must include '--cref [USER_IMAGE_URL] --cw 100 --no altered face, changed nose, different ears, modified nose, altered body size, slimming, morphed face, cartoon --v 6.1 --style raw'
-   - Flux / SDXL: Formatted with natural language identity anchor and negative prompt.
-   - DALL-E 3: Clear natural language instructions enforcing exact physical likeness of nose, ears, and body proportions.
+3. PROVIDE READY-TO-USE FORMATS FOR ALL MAJOR AI TOOLS:
+   - Full Prompt: Universal Master Face-Swap Prompt that clearly instructs any AI tool to map the user's face onto the trend.
+   - Midjourney: Complete with '--cref [YOUR_PHOTO_URL] --cw 100 --ar 3:4 --v 6.1 --style raw --no altered face, changed nose, different ears, modified nose, altered body size, slimming, morphed face, cartoon'.
+   - Leonardo.ai / Fooocus: Optimized prompt with explicit Image Guidance (Character Reference / Face Transfer) instructions.
+   - Flux / SDXL: Formatted for InstantID / ControlNet FaceID with positive & negative locks.
+   - ChatGPT / DALL-E 3: Clear conversational prompt to send with an attached selfie.
 
 USER CONFIGURATION:
 - Prompt Mode: ${mode}
@@ -188,22 +190,23 @@ USER CONFIGURATION:
 OUTPUT FORMAT:
 You MUST respond with valid, parseable JSON strictly matching this schema:
 {
-  "title": "A precise, catchy 3-6 word title for this visual trend",
+  "title": "Catchy 3-6 word title for this visual trend",
+  "trendElevationSummary": "1-2 sentences explaining how this image was elevated into a high-production visual masterpiece while preparing it for user face-swap",
   "trendInsights": {
-    "trendStyle": "Short descriptive name of the aesthetic trend (e.g. 'Cinematic Chiaroscuro Portrait')",
-    "visualCharacteristics": ["4-6 concise key visual elements (e.g. '85mm f/1.4 creamy bokeh', '45° soft directional key light', 'warm terracotta grade', 'locked facial geometry')"],
+    "trendStyle": "Specific name of the aesthetic trend (e.g. 'Vintage 90s Flash Editorial' or 'Cyberpunk Golden Hour Linen')",
+    "visualCharacteristics": ["5-6 key visual elements (e.g. '85mm f/1.4 creamy bokeh', '45° soft directional key light', '100% Locked Facial Geometry', 'Elevated Color Harmony')"],
     "trendScore": 96,
-    "explanation": "Brief explanation of how to recreate this visual trend while keeping your original face and body 100% intact."
+    "explanation": "Brief explanation of how the trend aesthetic is captured and elevated while locking the user's authentic facial identity."
   },
   "structuredAnalysis": {
-    "subject": "Detailed description of subject presence, framing, gaze, and authentic anatomical preservation",
+    "subject": "Detailed description of subject presence, framing, gaze, and identity replacement instructions",
     "pose": "Exact physical stance, body angle, head tilt, hand placement aligned with reference",
     "composition": "Rule of thirds, negative space, foreground/middle/background layering",
     "camera": "Camera height, angle, perspective, framing ratio",
     "lens": "Focal length (e.g. 85mm f/1.4, 50mm f/1.8), optical aperture, depth of field",
-    "lighting": "Key, fill, and rim light directions, color temperature, highlight roll-off",
+    "lighting": "Elevated 3-point lighting: key, fill, and rim light directions, color temperature, highlight roll-off",
     "environment": "Location type, architectural textures, atmospheric elements",
-    "clothing": "Wardrobe style, cut, materials, fabrics, accessories, colors matching trend",
+    "clothing": "Elevated wardrobe style, cut, materials, fabrics, accessories, colors matching trend",
     "colors": "Dominant color palette, accent tones, saturation, contrast levels",
     "mood": "Emotional tone, atmosphere, editorial feel",
     "style": "Photography genre (editorial portrait, street fashion, cinematic 35mm film)",
@@ -213,14 +216,21 @@ You MUST respond with valid, parseable JSON strictly matching this schema:
     "facial_features_lock": "Locks authentic nose shape, ear size, eyelid contours, jawline, and natural body proportions.",
     "special_details": "Subtle nuances like eye catchlights, delicate hair edge glow, and filmic shadow gradations"
   },
-  "fullPrompt": "The primary master prompt ready to run. Begins with identity/anatomy lock, followed by reference trend recreation, optical lens details, and negative exclusions.",
+  "fullPrompt": "The primary master face-swap prompt ready to run in any AI tool. Begins with identity/anatomy lock, followed by reference trend recreation, optical lens details, and negative exclusions.",
   "shortPrompt": "A punchy, concise version of the prompt with identity lock for fast generation.",
   "detailedPrompt": "An exhaustive, highly specified version including Hasselblad/Leica camera body, 85mm prime lens specs, lighting ratios, and color grade.",
-  "midjourneyFormat": "Midjourney v6.1 prompt with --cref [USER_IMAGE_URL] --cw 100 --no altered face, changed nose, different ears, modified nose, altered body size, slimming, morphed face, cartoon --ar 3:4 --v 6.1 --style raw",
+  "midjourneyFormat": "Midjourney v6.1 prompt with --cref [YOUR_PHOTO_URL] --cw 100 --no altered face, changed nose, different ears, modified nose, altered body size, slimming, morphed face, cartoon --ar 3:4 --v 6.1 --style raw",
+  "leonardoFormat": "Leonardo.ai / Fooocus prompt optimized for Character Reference / Face Transfer guidance",
   "fluxFormat": "Flux.1 / SDXL prompt with identity lock anchor and realistic raw skin textures.",
   "dalleFormat": "DALL-E 3 photographic prompt enforcing exact preservation of user's nose, ears, eyes, and natural body build.",
+  "toolInstructions": {
+    "midjourney": "1. Upload your selfie to Discord. 2. Right-click and 'Copy Link'. 3. Replace [YOUR_PHOTO_URL] with that link and send!",
+    "leonardo": "1. Turn on Image Guidance. 2. Select 'Character Reference / Face'. 3. Upload your photo (weight 0.90) and generate with this prompt.",
+    "chatgpt": "1. Click the attach (+) icon. 2. Attach your clear selfie. 3. Paste this prompt and send!",
+    "flux": "Use with InstantID or IP-Adapter FaceID (weight: 0.95). Paste prompt in positive box and copy the negative prompt."
+  },
   "negativePrompt": "altered face, modified face, changed nose, different nose shape, reshaped nose bridge, modified nostrils, altered ears, different ears, modified earlobes, changed eye shape, modified eye distance, altered facial features, different person, wrong face, morphed face, celebrity lookalike, altered body size, artificial slimming, changed body weight, distorted body proportions, airbrushed plastic skin, 3d render, cartoon, doll-like, bad anatomy",
-  "tags": ["4-5 relevant tags e.g. 'Face Locked', 'Editorial Portrait', 'Cinematic Lighting', 'Authentic Texture'"]
+  "tags": ["4-5 relevant tags e.g. 'Trend Face-Swap', 'Face Locked', 'Editorial Portrait', 'Cinematic Lighting', 'Authentic Texture'"]
 }
 `;
 
@@ -287,14 +297,23 @@ You MUST respond with valid, parseable JSON strictly matching this schema:
   return {
     id: "gen_" + Date.now().toString(36) + Math.random().toString(36).substring(2, 6),
     title: (parsed.title as string) || "Identity-Locked Trend Recreation",
+    trendElevationSummary: (parsed.trendElevationSummary as string) || "Elevated the reference image into high-production Vogue editorial lighting, 85mm prime depth of field, and natural skin micro-texture while locking authentic facial geometry.",
     fullPrompt,
     shortPrompt: (parsed.shortPrompt as string) || fullPrompt.slice(0, 160) + "...",
     detailedPrompt: (parsed.detailedPrompt as string) || fullPrompt,
     midjourneyFormat: (parsed.midjourneyFormat as string) ||
-      `${fullPrompt.slice(0, 200)} --cref [USER_IMAGE_URL] --cw 100 --no altered face, changed nose, different ears, modified nose, altered body size, slimming, morphed face, cartoon --ar 3:4 --v 6.1 --style raw`,
+      `${fullPrompt.slice(0, 200)} --cref [YOUR_PHOTO_URL] --cw 100 --no altered face, changed nose, different ears, modified nose, altered body size, slimming, morphed face, cartoon --ar 3:4 --v 6.1 --style raw`,
+    leonardoFormat: (parsed.leonardoFormat as string) ||
+      `${fullPrompt.slice(0, 220)} [Settings: Turn ON Image Guidance -> Character Reference / Face Transfer (Strength: 0.90) with your uploaded photo]`,
     fluxFormat: (parsed.fluxFormat as string) || fullPrompt,
     dalleFormat: (parsed.dalleFormat as string) ||
       `A professional photographic portrait in the composition and lighting of the reference image. The subject must maintain the exact facial features, nose, ears, eye shape, and body build of the user photo with zero alteration or artificial slimming.`,
+    toolInstructions: (parsed.toolInstructions as { midjourney: string; leonardo: string; chatgpt: string; flux: string }) || {
+      midjourney: "1. Upload your selfie to Discord. 2. Right-click and 'Copy Link'. 3. Replace [YOUR_PHOTO_URL] with that link and send!",
+      leonardo: "1. Turn on Image Guidance. 2. Select 'Character Reference / Face'. 3. Upload your photo (weight 0.90) and generate with this prompt.",
+      chatgpt: "1. Click the attach (+) icon in ChatGPT. 2. Attach your clear selfie. 3. Paste this prompt and send!",
+      flux: "Use with InstantID or IP-Adapter FaceID (weight: 0.95). Paste prompt in positive box and copy the negative prompt.",
+    },
     negativePrompt,
     characterRefCommand: "--cref [YOUR_PHOTO_URL] --cw 100 --style raw --v 6.1",
     faceLockGuaranteed: true,
@@ -306,7 +325,7 @@ You MUST respond with valid, parseable JSON strictly matching this schema:
     referenceDimensions: dimensions,
     userPhoto: userPhotoUrl,
     isFavorited: false,
-    tags: Array.isArray(parsed.tags) ? (parsed.tags as string[]) : ["Identity Locked", "Face Preserved", "Trend Recreated", "AI Prompt"],
+    tags: Array.isArray(parsed.tags) ? (parsed.tags as string[]) : ["Trend Face-Swap", "Face Locked", "Nose & Ears Preserved", "Body Size Locked", "AI Prompt"],
     settingsUsed: advancedSettings,
   };
 }
@@ -338,7 +357,7 @@ function generateIntelligentFallback(
     composition: `Rule of thirds with subject placed in strong focal zone, preserving ${settings.preserveComposition}% of original spatial geometry and negative space.`,
     camera: "Eye-level perspective with intentional micro-tilt for dynamic presence.",
     lens: `${selectedMode.lens}, providing gentle subject isolation with creamy background falloff and round specular highlights.`,
-    lighting: "Dual-source lighting setup: soft diffused directional key light at 45 degrees, subtle atmospheric rim lighting carving the silhouette.",
+    lighting: "Elevated 3-point lighting setup: soft diffused directional key light at 45 degrees, subtle atmospheric rim lighting carving the silhouette, gentle eye catchlights.",
     environment: `Aesthetic setting matching the reference mood, retaining ${settings.preserveEnvironment}% of background geometry with warm ambient reflections.`,
     clothing: "Contemporary tailored styling harmonizing with the color palette of the reference scene.",
     colors: "Curated harmonious color palette with balanced saturation, deep rich contrast, and flattering warm skin undertones.",
@@ -354,30 +373,40 @@ function generateIntelligentFallback(
   const trendScore = Math.min(99, Math.max(88, 92 + Math.floor(Math.random() * 7)));
 
   const identityAnchor = userPhotoUrl
-    ? "Masterwork photographic portrait of the exact individual shown in the user's portrait. ABSOLUTE FACIAL & ANATOMICAL LOCK: Freeze and strictly preserve 100% of authentic facial geometry with zero modification: identical nose shape (bridge width, nasal tip contour, nostril shape), identical ears (size, position, earlobe structure), exact eye shape, eyelid contour, natural cheekbones, and jawline. Strictly preserve the subject's authentic natural body size and physical proportions without slimming or modification."
-    : "Masterwork photographic portrait with STRICT IDENTITY PRESERVATION. Freeze authentic facial features: identical nose bridge and tip, identical ear size and shape, authentic eye geometry, and authentic natural body size with zero alteration or slimming.";
+    ? "Photographic portrait of the exact individual shown in the user's uploaded portrait. ABSOLUTE FACIAL & ANATOMICAL LOCK: Freeze and strictly preserve 100% of authentic facial geometry with zero modification: identical nose shape (bridge width, nasal tip contour, nostril shape), identical ears (size, position, earlobe structure), exact eye shape, eyelid contour, natural cheekbones, and jawline. Strictly preserve the subject's authentic natural body size and physical proportions without slimming or modification."
+    : "Photographic portrait with STRICT IDENTITY PRESERVATION. Freeze authentic facial features: identical nose bridge and tip, identical ear size and shape, authentic eye geometry, and authentic natural body size with zero alteration or slimming.";
 
-  const fullPrompt = `${identityAnchor} Recreated in the exact visual composition, lighting, wardrobe, and atmosphere of the reference image. Illuminated by soft 45-degree directional key lighting with delicate rim light on hair and shoulders. Shot on ${selectedMode.lens}, shallow depth of field, creamy background blur. Authentic raw skin texture with realistic micro-pores, zero plastic smoothing, zero artificial AI beautification. Negative prompt: altered face, changed nose, different nose shape, modified nostrils, altered ears, different ears, altered body size, artificial slimming, morphed face, cartoon, doll-like.`;
+  const fullPrompt = `${identityAnchor} Transpose this exact individual into the viral visual trend: Recreated in the composition, lighting, wardrobe, and atmosphere of the reference image. Illuminated by soft 45-degree directional key lighting with delicate rim light on hair and shoulders. Shot on Hasselblad H6D with ${selectedMode.lens}, shallow depth of field, creamy background blur. Authentic raw skin texture with realistic micro-pores, zero plastic smoothing, zero artificial AI beautification. Negative prompt: altered face, changed nose, different nose shape, modified nostrils, altered ears, different ears, altered body size, artificial slimming, morphed face, cartoon, doll-like.`;
 
-  const shortPrompt = `${identityAnchor.slice(0, 180)}. Recreate reference composition, ${selectedMode.lens}, soft directional lighting, creamy bokeh, natural skin texture, editorial finish.`;
+  const shortPrompt = `${identityAnchor.slice(0, 180)}. Recreate reference trend composition, ${selectedMode.lens}, soft directional lighting, creamy bokeh, natural skin texture, editorial finish.`;
 
   const detailedPrompt = `High-production ${style.toLowerCase()} photography still. The subject's authentic facial identity is strictly locked: identical nose geometry (bridge width, tip angle, nostrils), identical ear structure, and identical natural body size and proportions. The composition precisely preserves the spatial staging and angle of the reference. Lighting features a 45-degree diffused key light paired with subtle hair rim light to separate the subject from the background. Shot on Hasselblad H6D with ${selectedMode.lens} at f/1.8. Color graded with authentic warm tones and gentle highlight halation. Zero plastic digital smoothing, realistic skin pores, and Vogue editorial polish. Negative prompt: altered face, changed nose, different ears, modified nose, altered body size, slimming, morphed face, bad anatomy.`;
 
-  const midjourneyFormat = `${style.toLowerCase()} portrait, strict face and body lock, identical nose shape, identical ears, authentic body size, recreate reference composition, ${selectedMode.lens}, soft directional lighting, rim light on hair, creamy bokeh, natural skin texture --cref [USER_IMAGE_URL] --cw 100 --no altered face, changed nose, different ears, modified nose, altered body size, slimming, morphed face, cartoon --ar 3:4 --v 6.1 --style raw`;
+  const midjourneyFormat = `${style.toLowerCase()} portrait, strict face and body lock, identical nose shape, identical ears, authentic body size, recreate reference trend composition, ${selectedMode.lens}, soft directional lighting, rim light on hair, creamy bokeh, natural skin texture --cref [YOUR_PHOTO_URL] --cw 100 --no altered face, changed nose, different ears, modified nose, altered body size, slimming, morphed face, cartoon --ar 3:4 --v 6.1 --style raw`;
+
+  const leonardoFormat = `${fullPrompt.slice(0, 240)} [Leonardo.ai Settings: Turn ON Image Guidance -> select 'Character Reference' or 'Face Transfer', upload your photo with Strength 0.90, and click Generate]`;
 
   const fluxFormat = `${identityAnchor} Rendered in the composition and lighting of the reference image. Shot on ${selectedMode.lens} with shallow depth of field, natural skin texture, filmic color grading, realistic editorial masterpiece. Negative prompt: altered face, modified nose, different ears, altered body size, artificial slimming, morphed face.`;
 
-  const dalleFormat = `A professional ${style.toLowerCase()} portrait photograph in the style and composition of the reference image. The subject must strictly maintain the exact facial features, nose, ears, eye shape, and natural body size of the person in the user photo, maintaining authentic physical likeness and proportions with zero distortion or facial alterations.`;
+  const dalleFormat = `A professional ${style.toLowerCase()} portrait photograph in the style and composition of the reference trend image. The subject must strictly maintain the exact facial features, nose, ears, eye shape, and natural body size of the person in the user photo, maintaining authentic physical likeness and proportions with zero distortion or facial alterations.`;
 
   return {
     id: "gen_" + Date.now().toString(36) + Math.random().toString(36).substring(2, 6),
     title: `${style} ${selectedMode.styleName}`,
+    trendElevationSummary: "Whatever photo you upload, our AI transforms and elevates it into a pristine photographic masterpiece with 45° softbox directional lighting, Hasselblad 85mm optical bokeh, and Kodak Portra 400 film grain, while strictly locking your original face, nose, ears, and body size.",
     fullPrompt,
     shortPrompt,
     detailedPrompt,
     midjourneyFormat,
+    leonardoFormat,
     fluxFormat,
     dalleFormat,
+    toolInstructions: {
+      midjourney: "1. Upload your selfie to Discord. 2. Right-click and 'Copy Link'. 3. Replace [YOUR_PHOTO_URL] with that link and send!",
+      leonardo: "1. Turn on Image Guidance. 2. Select 'Character Reference / Face'. 3. Upload your photo (weight 0.90) and generate with this prompt.",
+      chatgpt: "1. Click the attach (+) icon in ChatGPT. 2. Attach your clear selfie. 3. Paste this prompt and send!",
+      flux: "Use with InstantID or IP-Adapter FaceID (weight: 0.95). Paste prompt in positive box and copy the negative prompt.",
+    },
     negativePrompt: ANATOMICAL_NEGATIVE_PROMPT,
     characterRefCommand: "--cref [YOUR_PHOTO_URL] --cw 100 --style raw --v 6.1",
     faceLockGuaranteed: true,
@@ -401,7 +430,7 @@ function generateIntelligentFallback(
     referenceDimensions: dimensions,
     userPhoto: userPhotoUrl,
     isFavorited: false,
-    tags: [style, "Face Locked", "Nose & Ears Preserved", "Body Size Locked", "AI Prompt"],
+    tags: [style, "Trend Face-Swap", "Face Locked", "Nose & Ears Preserved", "Body Size Locked", "AI Prompt"],
     settingsUsed: settings,
   };
 }

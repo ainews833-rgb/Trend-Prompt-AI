@@ -4,6 +4,20 @@ import { PRESET_TRENDS } from "./presetSamples";
 const HISTORY_STORAGE_KEY = "trendprompt_prompt_history";
 
 export class HistoryService {
+  public static getMaxFavorites(plan: "free" | "pro" | "creator" = "free"): number {
+    return plan === "pro" || plan === "creator" ? 25 : 5;
+  }
+
+  public static getFavoritesCount(): number {
+    return this.getFavorites().length;
+  }
+
+  public static canAddFavorite(plan: "free" | "pro" | "creator" = "free"): boolean {
+    const current = this.getFavoritesCount();
+    const max = this.getMaxFavorites(plan);
+    return current < max;
+  }
+
   public static getHistory(): GeneratedPromptResult[] {
     if (typeof window === "undefined") return [];
     const stored = localStorage.getItem(HISTORY_STORAGE_KEY);
@@ -46,15 +60,35 @@ export class HistoryService {
     localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(updated));
   }
 
-  public static toggleFavorite(id: string): boolean {
-    if (typeof window === "undefined") return false;
+  public static toggleFavorite(
+    id: string,
+    userPlan: "free" | "pro" | "creator" = "free"
+  ): { success: boolean; isFavorited: boolean; reason?: string } {
+    if (typeof window === "undefined") return { success: false, isFavorited: false };
     const history = this.getHistory();
     const item = history.find((h) => h.id === id);
-    if (!item) return false;
+    if (!item) return { success: false, isFavorited: false, reason: "Prompt not found" };
 
-    item.isFavorited = !item.isFavorited;
+    // If currently not favorited, check limits before favoriting
+    if (!item.isFavorited) {
+      const currentFavCount = history.filter((h) => h.isFavorited).length;
+      const maxAllowed = this.getMaxFavorites(userPlan);
+      if (currentFavCount >= maxAllowed) {
+        return {
+          success: false,
+          isFavorited: false,
+          reason: `Favorite limit reached (${maxAllowed}/${maxAllowed} on ${
+            userPlan === "pro" || userPlan === "creator" ? "Pro Plan" : "Free Plan"
+          }). Upgrade to Pro to save up to 25 favorites!`,
+        };
+      }
+      item.isFavorited = true;
+    } else {
+      item.isFavorited = false;
+    }
+
     localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history));
-    return item.isFavorited;
+    return { success: true, isFavorited: item.isFavorited };
   }
 
   public static deletePrompt(id: string): void {

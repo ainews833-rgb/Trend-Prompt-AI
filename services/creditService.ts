@@ -34,9 +34,9 @@ export class CreditService {
   }
 
   public static updatePlan(plan: "free" | "pro" | "creator"): void {
-    const newTotal = plan === "creator" ? 250 : plan === "pro" ? 60 : 10;
+    const newTotal = plan === "free" ? 10 : 100;
     AuthService.updateUser({
-      plan,
+      plan: plan === "creator" ? "pro" : plan,
       creditsRemaining: newTotal,
       creditsTotal: newTotal,
     });
@@ -46,7 +46,7 @@ export class CreditService {
       type: "subscription_refresh",
       amount: newTotal,
       timestamp: new Date().toISOString(),
-      description: `Updated to ${plan.toUpperCase()} Plan (${newTotal} credits/mo)`,
+      description: `Updated to ${plan === "free" ? "Free Plan" : "Pro Plan"} (${newTotal} credits/mo)`,
     });
   }
 
@@ -59,9 +59,9 @@ export class CreditService {
   }
 
   public static upgradePlan(plan: "pro" | "creator"): void {
-    const newTotal = plan === "pro" ? 60 : 250;
+    const newTotal = 100;
     AuthService.updateUser({
-      plan,
+      plan: "pro",
       creditsRemaining: newTotal,
       creditsTotal: newTotal,
     });
@@ -71,7 +71,7 @@ export class CreditService {
       type: "subscription_refresh",
       amount: newTotal,
       timestamp: new Date().toISOString(),
-      description: `Upgraded to ${plan.toUpperCase()} Plan (${newTotal} credits/mo)`,
+      description: `Upgraded to Pro Plan (${newTotal} credits/mo)`,
     });
   }
 

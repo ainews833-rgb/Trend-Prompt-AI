@@ -97,29 +97,24 @@ export function Header({
           )}
         </button>
 
-        {/* Remaining Credits Badge */}
+        {/* Pro Plan Trigger with Emoji Icon (replaces Credit option, preserves functionality) */}
         <button
           onClick={onOpenUpgrade}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-750 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-all active:scale-95"
-          title="Click to view plans or purchase credits"
+          className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-xs border ${
+            user.plan === "pro" || user.plan === "creator"
+              ? "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/50"
+              : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white border-transparent shadow-blue-500/25"
+          }`}
+          title="Click to view Pro Plan and account upgrades"
         >
-          <Zap className="w-3.5 h-3.5 fill-blue-600 text-blue-600 dark:fill-blue-400 dark:text-blue-400" />
-          <span>
-            {user.creditsRemaining}{" "}
-            <span className="hidden sm:inline">credits</span>
-          </span>
+          <span className="text-sm leading-none" role="img" aria-label="crown">👑</span>
+          <span>Pro</span>
+          {user.plan === "pro" || user.plan === "creator" ? (
+            <span className="hidden sm:inline text-[10px] font-semibold opacity-80">(Active)</span>
+          ) : (
+            <span className="hidden sm:inline text-[10px] font-semibold opacity-90 px-1 py-0.2 bg-white/20 rounded">Upgrade</span>
+          )}
         </button>
-
-        {/* Quick New Prompt CTA (if not already on create tab) */}
-        {activeTab !== "create" && (
-          <button
-            onClick={() => setActiveTab("create")}
-            className="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs transition-all active:scale-95"
-          >
-            <Wand2 className="w-3.5 h-3.5" />
-            <span>Create Prompt</span>
-          </button>
-        )}
 
         {/* Theme toggle */}
         <button

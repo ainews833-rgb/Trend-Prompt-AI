@@ -10,6 +10,7 @@ import { PricingView } from "@/components/PricingView";
 import { SettingsView } from "@/components/SettingsView";
 import { LandingView } from "@/components/LandingView";
 import { AuthModal } from "@/components/AuthModal";
+import { SignOutConfirmModal } from "@/components/SignOutConfirmModal";
 import { ToastContainer, ToastMessage } from "@/components/Toast";
 import { ActiveTab, GeneratedPromptResult, User } from "@/types";
 import { AuthService } from "@/services/authService";
@@ -27,6 +28,7 @@ export default function Home() {
   const [mobileOpen, setMobileOpen] = useState<boolean>(false);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState<boolean>(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
+  const [isSignOutModalOpen, setIsSignOutModalOpen] = useState<boolean>(false);
   const [initialPresetId, setInitialPresetId] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
@@ -118,7 +120,7 @@ export default function Home() {
           setActiveTab={setActiveTab}
           user={user}
           onOpenUpgrade={() => setIsUpgradeModalOpen(true)}
-          onSignOut={handleSignOut}
+          onSignOut={() => setIsSignOutModalOpen(true)}
           onOpenAuth={() => setIsAuthModalOpen(true)}
           mobileOpen={mobileOpen}
           setMobileOpen={setMobileOpen}
@@ -160,18 +162,22 @@ export default function Home() {
 
             {activeTab === "history" && (
               <HistoryView
+                user={user}
                 onlyFavorites={false}
                 onOpenPrompt={handleOpenPrompt}
                 onNewPrompt={() => setActiveTab("create")}
+                onOpenUpgrade={() => setIsUpgradeModalOpen(true)}
                 showToast={showToast}
               />
             )}
 
             {activeTab === "favorites" && (
               <HistoryView
+                user={user}
                 onlyFavorites={true}
                 onOpenPrompt={handleOpenPrompt}
                 onNewPrompt={() => setActiveTab("create")}
+                onOpenUpgrade={() => setIsUpgradeModalOpen(true)}
                 showToast={showToast}
               />
             )}
@@ -220,6 +226,14 @@ export default function Home() {
             refreshUser();
           }}
           showToast={showToast}
+        />
+
+        {/* Sign Out Confirmation Modal */}
+        <SignOutConfirmModal
+          isOpen={isSignOutModalOpen}
+          onClose={() => setIsSignOutModalOpen(false)}
+          onConfirm={handleSignOut}
+          user={user}
         />
 
         {/* Global Toast Container */}
