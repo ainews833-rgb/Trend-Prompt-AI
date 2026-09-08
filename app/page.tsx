@@ -15,9 +15,20 @@ import { ToastContainer, ToastMessage } from "@/components/Toast";
 import { ActiveTab, GeneratedPromptResult, User } from "@/types";
 import { AuthService } from "@/services/authService";
 import { CreditService } from "@/services/creditService";
+import { CmsService, CmsPrompt } from "@/services/cmsService";
+import { CmsLayout } from "@/components/cms/CmsLayout";
+import { CmsLoginView } from "@/components/cms/CmsLoginView";
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<ActiveTab>("dashboard");
+  const [activeTab, setActiveTab] = useState<ActiveTab>(() => {
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get("cms-login") === "true" || window.location.hash === "#cms") {
+        return CmsService.isAdminAuthenticated() ? "cms" : "cms_login";
+      }
+    }
+    return "dashboard";
+  });
   const [user, setUser] = useState<User>(() => AuthService.getCurrentUser());
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     if (typeof window !== "undefined") {
@@ -30,6 +41,13 @@ export default function Home() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [isSignOutModalOpen, setIsSignOutModalOpen] = useState<boolean>(false);
   const [initialPresetId, setInitialPresetId] = useState<string | null>(null);
+  const [initialCmsPrompt, setInitialCmsPrompt] = useState<CmsPrompt | null>(null);
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return CmsService.isAdminAuthenticated();
+    }
+    return false;
+  });
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
   // Sync user state from services
@@ -96,6 +114,76 @@ export default function Home() {
     refreshUser();
   };
 
+  const handleSelectCmsPrompt = (prompt: CmsPrompt) => {
+    setInitialCmsPrompt(prompt);
+    setActiveTab("create");
+  };
+
+  // Secret shortcut & URL parameter listener for Administrator
+  useEffect(() => {
+    const checkAdmin = () => {
+      setIsAdminLoggedIn(CmsService.isAdminAuthenticated());
+    };
+
+    window.addEventListener("cms-settings-updated", checkAdmin);
+    window.addEventListener("cms-prompts-updated", checkAdmin);
+
+    // Secret Admin Shortcut: Ctrl + Shift + A (or Cmd + Shift + A on Mac)
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "a" || e.key === "A")) {
+        e.preventDefault();
+        if (CmsService.isAdminAuthenticated()) {
+          setActiveTab("cms");
+        } else {
+          setActiveTab("cms_login");
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("cms-settings-updated", checkAdmin);
+      window.removeEventListener("cms-prompts-updated", checkAdmin);
+    };
+  }, []);
+
+  // CMS Dashboard Full Screen View
+  if (activeTab === "cms") {
+    return (
+      <div className="dark">
+        <CmsLayout
+          onBackToSite={() => setActiveTab("dashboard")}
+          onLogout={() => {
+            CmsService.logoutAdmin();
+            setIsAdminLoggedIn(false);
+            setActiveTab("dashboard");
+            showToast("info", "Administrator logged out.");
+          }}
+          showToast={showToast}
+        />
+        <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+      </div>
+    );
+  }
+
+  // CMS Login View
+  if (activeTab === "cms_login") {
+    return (
+      <div className="dark">
+        <CmsLoginView
+          onLoginSuccess={() => {
+            setIsAdminLoggedIn(true);
+            setActiveTab("cms");
+          }}
+          onBackToSite={() => setActiveTab("dashboard")}
+          showToast={showToast}
+        />
+        <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+      </div>
+    );
+  }
+
   // If user navigated to Landing Page view
   if (activeTab === "landing") {
     return (
@@ -145,6 +233,7 @@ export default function Home() {
                 user={user}
                 setActiveTab={setActiveTab}
                 onSelectPreset={handleSelectPreset}
+                onSelectCmsPrompt={handleSelectCmsPrompt}
                 onOpenUpgrade={() => setIsUpgradeModalOpen(true)}
                 showToast={showToast}
               />
@@ -157,6 +246,8 @@ export default function Home() {
                 showToast={showToast}
                 initialPresetId={initialPresetId}
                 onClearInitialPreset={() => setInitialPresetId(null)}
+                initialCmsPrompt={initialCmsPrompt}
+                onClearInitialCmsPrompt={() => setInitialCmsPrompt(null)}
               />
             )}
 
@@ -238,6 +329,21 @@ export default function Home() {
 
         {/* Global Toast Container */}
         <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+
+        {/* Discreet Quick Switch back to Admin CMS for Authenticated Admin (Hidden from normal users) */}
+        {isAdminLoggedIn && (
+          <div className="fixed bottom-4 left-4 z-40">
+            <button
+              onClick={() => setActiveTab("cms")}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/95 hover:bg-slate-900 text-white text-xs font-semibold shadow-2xl border border-blue-500/50 backdrop-blur-md transition-transform hover:scale-105 active:scale-95 cursor-pointer"
+              title="Return to CMS Admin Dashboard (Shortcut: Ctrl+Shift+A)"
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>Admin Panel</span>
+              <span className="text-[10px] text-slate-400 font-mono hidden sm:inline">Ctrl+Shift+A</span>
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

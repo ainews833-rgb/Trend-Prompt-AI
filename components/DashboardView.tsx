@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Wand2,
   FolderHeart,
@@ -18,11 +18,15 @@ import {
 import { ActiveTab, GeneratedPromptResult, User } from "@/types";
 import { PRESET_TRENDS, TrendPreset } from "@/services/presetSamples";
 import { HistoryService } from "@/services/historyService";
+import { PinterestTrendingFeed } from "@/components/PinterestTrendingFeed";
+import { PromptSideDrawer } from "@/components/PromptSideDrawer";
+import { CmsPrompt } from "@/services/cmsService";
 
 interface DashboardViewProps {
   user: User;
   setActiveTab: (tab: ActiveTab) => void;
   onSelectPreset: (presetId: string) => void;
+  onSelectCmsPrompt?: (prompt: CmsPrompt) => void;
   onOpenUpgrade: () => void;
   showToast: (type: "success" | "error" | "info", message: string) => void;
 }
@@ -31,6 +35,7 @@ export function DashboardView({
   user,
   setActiveTab,
   onSelectPreset,
+  onSelectCmsPrompt,
   onOpenUpgrade,
   showToast,
 }: DashboardViewProps) {
@@ -38,9 +43,27 @@ export function DashboardView({
   const recentPrompts = history.slice(0, 4);
   const favoriteCount = history.filter((h) => h.isFavorited).length;
 
+  const [selectedPrompt, setSelectedPrompt] = useState<CmsPrompt | null>(null);
+  const [isSideDrawerOpen, setIsSideDrawerOpen] = useState(false);
+
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
     showToast("success", "Prompt copied to clipboard!");
+  };
+
+  const handleCardClick = (prompt: CmsPrompt) => {
+    setSelectedPrompt(prompt);
+    setIsSideDrawerOpen(true);
+  };
+
+  const handleUseInStudio = (prompt: CmsPrompt) => {
+    if (onSelectCmsPrompt) {
+      onSelectCmsPrompt(prompt);
+    } else {
+      onSelectPreset(prompt.category);
+    }
+    setActiveTab("create");
+    showToast("info", `Loaded "${prompt.title}" into Studio. Add your photo to Slot 2!`);
   };
 
   return (
@@ -113,6 +136,13 @@ export function DashboardView({
           </div>
         </div>
       </div>
+
+      {/* Pinterest-Style Trending Prompts Feed (With Live CMS updates & Side Drawer) */}
+      <PinterestTrendingFeed
+        onSelectPrompt={handleCardClick}
+        onUseInStudio={handleUseInStudio}
+        showToast={showToast}
+      />
 
       {/* Trending Visual Inspirations (1-click to test workflow!) */}
       <div className="space-y-4">
@@ -310,6 +340,15 @@ export function DashboardView({
           </div>
         )}
       </div>
+
+      {/* Slide-over Prompt Side Drawer (When clicking any Pinterest card) */}
+      <PromptSideDrawer
+        prompt={selectedPrompt}
+        isOpen={isSideDrawerOpen}
+        onClose={() => setIsSideDrawerOpen(false)}
+        onUseInStudio={handleUseInStudio}
+        showToast={showToast}
+      />
     </div>
   );
 }

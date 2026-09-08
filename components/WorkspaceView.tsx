@@ -42,6 +42,7 @@ import { PromptService } from "@/services/promptService";
 import { CreditService } from "@/services/creditService";
 import { HistoryService } from "@/services/historyService";
 import { compressImageForUpload } from "@/lib/imageUtils";
+import { CmsPrompt } from "@/services/cmsService";
 
 interface WorkspaceViewProps {
   user: User;
@@ -49,6 +50,8 @@ interface WorkspaceViewProps {
   showToast: (type: "success" | "error" | "info", message: string) => void;
   initialPresetId?: string | null;
   onClearInitialPreset?: () => void;
+  initialCmsPrompt?: CmsPrompt | null;
+  onClearInitialCmsPrompt?: () => void;
 }
 
 const DEFAULT_NEGATIVE_PROMPT =
@@ -99,6 +102,8 @@ export function WorkspaceView({
   showToast,
   initialPresetId,
   onClearInitialPreset,
+  initialCmsPrompt,
+  onClearInitialCmsPrompt,
 }: WorkspaceViewProps) {
   // Reference image state
   const [refImage, setRefImage] = useState<string | null>(null);
@@ -174,6 +179,72 @@ export function WorkspaceView({
 
     return () => clearTimeout(timeout);
   }, [initialPresetId, onClearInitialPreset, showToast]);
+
+  // Handle initial CMS prompt if passed from Pinterest trending feed
+  useEffect(() => {
+    if (!initialCmsPrompt) return;
+
+    const timeout = setTimeout(() => {
+      setRefImage(initialCmsPrompt.imageUrl);
+      setRefDimensions({ width: 1000, height: 1200, fileSizeFormatted: "320 KB" });
+      setSelectedMode("photorealistic");
+      
+      const fullResult: GeneratedPromptResult = {
+        id: `cms_${initialCmsPrompt.id}`,
+        title: initialCmsPrompt.title,
+        fullPrompt: initialCmsPrompt.promptBody,
+        shortPrompt: initialCmsPrompt.title,
+        detailedPrompt: initialCmsPrompt.promptBody,
+        midjourneyFormat: initialCmsPrompt.midjourneyFormat || `${initialCmsPrompt.promptBody} --ar 4:5 --v 6.1`,
+        leonardoFormat: initialCmsPrompt.leonardoFormat || `${initialCmsPrompt.promptBody} --strength 0.88`,
+        fluxFormat: initialCmsPrompt.fluxFormat || initialCmsPrompt.promptBody,
+        dalleFormat: initialCmsPrompt.promptBody,
+        negativePrompt: initialCmsPrompt.negativePrompt || DEFAULT_NEGATIVE_PROMPT,
+        faceLockGuaranteed: true,
+        trendElevationSummary: `Trending style "${initialCmsPrompt.title}" ready to blend with your personal photo.`,
+        structuredAnalysis: {
+          subject: initialCmsPrompt.title,
+          pose: "Subject in authentic aesthetic pose",
+          composition: "Rule of thirds portrait",
+          camera: "Hasselblad H6D-100c",
+          lens: "85mm f/1.4",
+          lighting: "Soft ambient directional lighting",
+          environment: initialCmsPrompt.category,
+          clothing: "Curated styling matching aesthetic",
+          colors: "Kodak Portra 400 analog color grading",
+          mood: "Cinematic, authentic, elevated",
+          style: initialCmsPrompt.category,
+          background: "Atmospheric depth of field",
+          image_quality: "8k ultra-detailed photographic resolution",
+          identity_preservation: "Strict 100% facial geometry lock",
+          special_details: "Micro skin pores, natural catchlights",
+        },
+        trendInsights: {
+          trendStyle: initialCmsPrompt.category,
+          visualCharacteristics: initialCmsPrompt.tags,
+          trendScore: 98,
+          explanation: "High viral aesthetic performance across Instagram, Pinterest, and creative forums.",
+        },
+        mode: "photorealistic",
+        createdAt: new Date().toISOString(),
+        referenceImage: initialCmsPrompt.imageUrl,
+        isFavorited: false,
+        tags: initialCmsPrompt.tags,
+        settingsUsed: advancedSettings,
+      };
+
+      setCurrentResult(fullResult);
+      setEditablePromptText(initialCmsPrompt.promptBody);
+      showToast("info", `Loaded "${initialCmsPrompt.title}" from Trending Feed! Upload your photo in Slot 2.`);
+
+      if (onClearInitialCmsPrompt) {
+        onClearInitialCmsPrompt();
+      }
+    }, 0);
+
+    return () => clearTimeout(timeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialCmsPrompt?.id]);
 
   // Handle image upload from file with client-side canvas compression
   const handleFileUpload = async (

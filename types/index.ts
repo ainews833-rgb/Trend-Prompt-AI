@@ -127,4 +127,6 @@ export type ActiveTab =
   | 'favorites'
   | 'pricing'
   | 'settings'
-  | 'landing';
+  | 'landing'
+  | 'cms'
+  | 'cms_login';
