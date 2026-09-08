@@ -44,6 +44,8 @@ export function DashboardView({
   const [promos, setPromos] = useState<CmsPrompt[]>(() => CmsService.getPublishedPrompts());
   const [selectedPrompt, setSelectedPrompt] = useState<CmsPrompt | null>(null);
   const [isSideDrawerOpen, setIsSideDrawerOpen] = useState(false);
+  const [copiedPromptId, setCopiedPromptId] = useState<string | null>(null);
+  const [savedPromptIds, setSavedPromptIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const handleUpdate = () => {
@@ -53,9 +55,28 @@ export function DashboardView({
     return () => window.removeEventListener("cms-prompts-updated", handleUpdate);
   }, []);
 
-  const handleCopy = (text: string) => {
+  const handleCopy = (text: string, promptId?: string) => {
     navigator.clipboard.writeText(text);
+    if (promptId) {
+      setCopiedPromptId(promptId);
+      CmsService.incrementCopyCount(promptId);
+      setTimeout(() => setCopiedPromptId(null), 2000);
+    }
     showToast("success", "Prompt copied to clipboard!");
+  };
+
+  const handleToggleSave = (promptId: string) => {
+    setSavedPromptIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(promptId)) {
+        next.delete(promptId);
+        showToast("info", "Removed from saved prompts");
+      } else {
+        next.add(promptId);
+        showToast("success", "Prompt saved to bookmarks!");
+      }
+      return next;
+    });
   };
 
   const handleCardClick = (prompt: CmsPrompt) => {
@@ -179,47 +200,103 @@ export function DashboardView({
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4.5">
             {promos.map((promo) => (
               <div
                 key={promo.id}
                 onClick={() => handleCardClick(promo)}
-                className="group cursor-pointer rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 overflow-hidden shadow-xs hover:shadow-md hover:border-blue-400 dark:hover:border-blue-500 transition-all flex flex-col justify-between"
+                className="group relative aspect-[3/4] rounded-2xl sm:rounded-3xl overflow-hidden bg-slate-900 border border-slate-200/50 dark:border-slate-800 shadow-sm hover:shadow-2xl transition-all duration-300 cursor-pointer select-none"
               >
-                <div>
-                  <div className="relative h-48 overflow-hidden bg-slate-100 dark:bg-slate-800">
-                    {promo.imageUrl ? (
-                      <img
-                        src={promo.imageUrl}
-                        alt={promo.category}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center bg-slate-100 dark:bg-slate-800 text-slate-400">
-                        <Camera className="w-8 h-8 opacity-40 mb-1" />
-                        <span className="text-[11px] font-medium">{promo.category}</span>
-                      </div>
-                    )}
-                    <div className="absolute top-3 left-3">
-                      <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-slate-900/80 text-white backdrop-blur-xs border border-white/20">
-                        {promo.category}
-                      </span>
-                    </div>
+                {/* Photo Filling Entire Card (Edge-to-Edge with rounded corners) */}
+                {promo.imageUrl ? (
+                  <img
+                    src={promo.imageUrl}
+                    alt={promo.category}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+                  />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center bg-slate-100 dark:bg-slate-850 text-slate-400 p-4 text-center">
+                    <Camera className="w-10 h-10 opacity-30 mb-2" />
+                    <span className="text-xs font-semibold">{promo.category}</span>
                   </div>
+                )}
 
-                  <div className="p-4 space-y-1.5">
-                    <p className="text-xs text-slate-700 dark:text-slate-300 font-mono line-clamp-3 leading-relaxed">
-                      {promo.promptBody}
-                    </p>
-                  </div>
+                {/* Permanent subtle category pill (top-left) */}
+                <div className="absolute top-3 left-3 z-10 pointer-events-none transition-opacity duration-200 group-hover:opacity-0">
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-slate-950/70 text-white backdrop-blur-md border border-white/20 shadow-xs">
+                    {promo.category}
+                  </span>
                 </div>
 
-                <div className="px-4 pb-4 pt-2 flex items-center justify-between text-xs font-semibold text-blue-600 dark:text-blue-400 border-t border-slate-100 dark:border-slate-800/80">
-                  <span className="flex items-center gap-1.5">
-                    <Copy className="w-3.5 h-3.5" />
-                    <span>View Prompt Print</span>
-                  </span>
-                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                {/* Hover Overlay with Action Buttons (Revealed when moving mouse over image) */}
+                <div className="absolute inset-0 bg-slate-950/45 backdrop-blur-[1.5px] opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col justify-between p-3.5 z-20">
+                  {/* Top Row on Hover: Category Tag & Quick Copy Pill */}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-black/60 text-white backdrop-blur-md border border-white/20">
+                      {promo.category}
+                    </span>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCopy(promo.promptBody, promo.id);
+                      }}
+                      className="px-3 py-1 rounded-full bg-white/95 hover:bg-white text-slate-900 text-[11px] font-bold shadow-lg flex items-center gap-1.5 transition-transform hover:scale-105 active:scale-95"
+                      title="Copy Prompt"
+                    >
+                      {copiedPromptId === promo.id ? (
+                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      ) : (
+                        <Copy className="w-3.5 h-3.5 text-slate-800" />
+                      )}
+                      <span>{copiedPromptId === promo.id ? "Copied!" : "Copy"}</span>
+                    </button>
+                  </div>
+
+                  {/* Center Floating Action Circles (Matching uploaded screenshot reference) */}
+                  <div className="flex items-center justify-center gap-3.5 my-auto">
+                    {/* Circle 1: Bookmark / Save */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleSave(promo.id);
+                      }}
+                      className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-white/95 hover:bg-white text-slate-800 shadow-2xl flex items-center justify-center transition-transform hover:scale-110 active:scale-90"
+                      title={savedPromptIds.has(promo.id) ? "Saved to Favorites" : "Save to Favorites"}
+                    >
+                      <Bookmark
+                        className={`w-5 h-5 ${
+                          savedPromptIds.has(promo.id)
+                            ? "fill-amber-500 text-amber-500"
+                            : "text-slate-800"
+                        }`}
+                      />
+                    </button>
+
+                    {/* Circle 2: Sparkle / Quick Copy Prompt */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCopy(promo.promptBody, promo.id);
+                      }}
+                      className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-white/95 hover:bg-white text-amber-500 shadow-2xl flex items-center justify-center transition-transform hover:scale-110 active:scale-90"
+                      title="Copy Prompt"
+                    >
+                      {copiedPromptId === promo.id ? (
+                        <Check className="w-5 h-5 text-emerald-600" />
+                      ) : (
+                        <Sparkles className="w-5 h-5 text-amber-500" />
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Bottom Row on Hover: Click to Open Print Hint */}
+                  <div className="text-center">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/65 text-white text-[10px] font-medium backdrop-blur-md border border-white/15">
+                      <Wand2 className="w-3 h-3 text-blue-400" />
+                      <span>Click image to view print</span>
+                    </span>
+                  </div>
                 </div>
               </div>
             ))}
