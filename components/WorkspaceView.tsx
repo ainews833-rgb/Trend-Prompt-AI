@@ -41,6 +41,7 @@ import { PRESET_TRENDS, TrendPreset } from "@/services/presetSamples";
 import { PromptService } from "@/services/promptService";
 import { CreditService } from "@/services/creditService";
 import { HistoryService } from "@/services/historyService";
+import { compressImageForUpload } from "@/lib/imageUtils";
 
 interface WorkspaceViewProps {
   user: User;
@@ -174,8 +175,8 @@ export function WorkspaceView({
     return () => clearTimeout(timeout);
   }, [initialPresetId, onClearInitialPreset, showToast]);
 
-  // Handle image upload from file
-  const handleFileUpload = (
+  // Handle image upload from file with client-side canvas compression
+  const handleFileUpload = async (
     file: File,
     type: "reference" | "userPhoto"
   ) => {
@@ -185,35 +186,34 @@ export function WorkspaceView({
       return;
     }
 
-    if (file.size > 15 * 1024 * 1024) {
-      showToast("error", "Image too large (limit is 15MB).");
+    if (file.size > 25 * 1024 * 1024) {
+      showToast("error", "Image too large (limit is 25MB).");
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const result = e.target?.result as string;
-      const img = new Image();
-      img.onload = () => {
-        const dimensions = {
-          width: img.width,
-          height: img.height,
-          fileSizeFormatted: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
-        };
+    try {
+      // Intelligently optimize dimension & quality on the client
+      const maxDim = type === "reference" ? 1600 : 1200;
+      const optimized = await compressImageForUpload(file, maxDim, 0.85);
 
-        if (type === "reference") {
-          setRefImage(result);
-          setRefDimensions(dimensions);
-          showToast("success", `Reference image loaded (${img.width}x${img.height})`);
-        } else {
-          setUserPhoto(result);
-          setUserPhotoDimensions(dimensions);
-          showToast("success", "Personal reference photo added");
-        }
+      const dimensions = {
+        width: optimized.width,
+        height: optimized.height,
+        fileSizeFormatted: optimized.fileSizeFormatted,
       };
-      img.src = result;
-    };
-    reader.readAsDataURL(file);
+
+      if (type === "reference") {
+        setRefImage(optimized.dataUrl);
+        setRefDimensions(dimensions);
+        showToast("success", `Reference image loaded (${optimized.width}x${optimized.height})`);
+      } else {
+        setUserPhoto(optimized.dataUrl);
+        setUserPhotoDimensions(dimensions);
+        showToast("success", "Personal reference photo added");
+      }
+    } catch {
+      showToast("error", "Could not process image. Please try another image.");
+    }
   };
 
   // Drag & drop handlers
@@ -262,12 +262,17 @@ export function WorkspaceView({
       // Decrement credit
       CreditService.deductCredit(`Prompt Generation: ${result.title}`);
 
-      // Save to history
-      HistoryService.savePrompt(result);
-
+      // Set UI state immediately so user sees generated prompt right away
       setCurrentResult(result);
       setEditablePromptText(result.fullPrompt);
       showToast("success", "Analysis complete! Reusable prompt generated.");
+
+      // Save to history asynchronously with quota-safe protection
+      try {
+        await HistoryService.savePrompt(result);
+      } catch (histErr) {
+        console.warn("Notice: prompt stored in session, storage quota trimmed:", histErr);
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "AI analysis failed. Please retry.";
       showToast("error", msg);

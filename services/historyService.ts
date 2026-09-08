@@ -1,7 +1,13 @@
 import { GeneratedPromptResult, PromptMode } from "@/types";
 import { PRESET_TRENDS } from "./presetSamples";
+import { createStorageThumbnail } from "@/lib/imageUtils";
 
 const HISTORY_STORAGE_KEY = "trendprompt_prompt_history";
+const MAX_HISTORY_ITEMS = 30;
+
+// Compact SVG placeholder for when raw image data must be evicted to preserve localStorage quota
+const COMPACT_PLACEHOLDER =
+  "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'><rect width='120' height='120' fill='%231e293b'/><circle cx='60' cy='50' r='18' fill='%2338bdf8'/><path d='M30 95 C30 75 90 75 90 95' fill='%2338bdf8'/></svg>";
 
 export class HistoryService {
   public static getMaxFavorites(plan: "free" | "pro" | "creator" = "free"): number {
@@ -18,18 +24,91 @@ export class HistoryService {
     return current < max;
   }
 
+  /**
+   * Safely writes history items to localStorage with automatic multi-tier quota degradation.
+   * Completely eliminates "Failed to execute 'setItem' on 'Storage': Setting the value exceeded the quota."
+   */
+  private static safeSetStorage(items: GeneratedPromptResult[]): boolean {
+    if (typeof window === "undefined") return false;
+
+    // Strategy 1: Direct attempt with items capped at MAX_HISTORY_ITEMS
+    try {
+      const capped = items.slice(0, MAX_HISTORY_ITEMS);
+      localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(capped));
+      return true;
+    } catch (e) {
+      console.warn("localStorage quota reached on direct write. Starting auto-pruning recovery...", e);
+    }
+
+    // Strategy 2: Strip large base64 data from items older than the 2 most recent entries
+    try {
+      const trimmed = items.slice(0, 20).map((item, index) => {
+        if (index > 1) {
+          return {
+            ...item,
+            referenceImage:
+              item.referenceImage?.startsWith("data:image/") && item.referenceImage.length > 5000
+                ? COMPACT_PLACEHOLDER
+                : item.referenceImage,
+            userPhoto:
+              item.userPhoto?.startsWith("data:image/") && item.userPhoto.length > 5000
+                ? undefined
+                : item.userPhoto,
+          };
+        }
+        return item;
+      });
+      localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(trimmed));
+      return true;
+    } catch (e) {
+      console.warn("Quota still exceeded on Strategy 2. Trying aggressive compression...", e);
+    }
+
+    // Strategy 3: Keep only top 10 items with compact SVG placeholders
+    try {
+      const favorited = items.filter((i) => i.isFavorited);
+      const recents = items.filter((i) => !i.isFavorited).slice(0, 5);
+      const combined = [...favorited, ...recents].slice(0, 10).map((item) => ({
+        ...item,
+        referenceImage:
+          item.referenceImage?.startsWith("data:image/") && item.referenceImage.length > 2000
+            ? COMPACT_PLACEHOLDER
+            : item.referenceImage,
+        userPhoto: undefined,
+      }));
+      localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(combined));
+      return true;
+    } catch (e) {
+      console.warn("Quota still exceeded on Strategy 3. Saving text metadata only...", e);
+    }
+
+    // Strategy 4: Save only text metadata without any images
+    try {
+      const textOnly = items.slice(0, 8).map((item) => ({
+        ...item,
+        referenceImage: COMPACT_PLACEHOLDER,
+        userPhoto: undefined,
+      }));
+      localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(textOnly));
+      return true;
+    } catch (e) {
+      console.error("Critical storage exhaustion: unable to write history to localStorage.", e);
+      return false;
+    }
+  }
+
   public static getHistory(): GeneratedPromptResult[] {
     if (typeof window === "undefined") return [];
-    const stored = localStorage.getItem(HISTORY_STORAGE_KEY);
-    if (stored) {
-      try {
+    try {
+      const stored = localStorage.getItem(HISTORY_STORAGE_KEY);
+      if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) {
           return parsed;
         }
-      } catch {
-        // fallback to seed
       }
+    } catch (e) {
+      console.warn("Failed to parse history from localStorage:", e);
     }
 
     // Seed with two default historical entries from PRESET_TRENDS for a rich initial experience
@@ -40,24 +119,81 @@ export class HistoryService {
       isFavorited: index === 0,
     }));
 
-    localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(initialSeed));
+    this.safeSetStorage(initialSeed);
     return initialSeed;
   }
 
-  public static savePrompt(prompt: GeneratedPromptResult): void {
+  /**
+   * Saves prompt into localStorage by first converting high-res base64 images into
+   * lightweight JPEG thumbnails (~5-10 KB), preventing quota exhaustion.
+   */
+  public static async savePrompt(prompt: GeneratedPromptResult): Promise<void> {
     if (typeof window === "undefined") return;
-    const history = this.getHistory();
-    const existingIndex = history.findIndex((h) => h.id === prompt.id);
-    let updated: GeneratedPromptResult[];
 
-    if (existingIndex >= 0) {
-      updated = [...history];
-      updated[existingIndex] = prompt;
-    } else {
-      updated = [prompt, ...history];
+    try {
+      // Create tiny lightweight storage thumbnails for referenceImage and userPhoto
+      const storageThumbRef = prompt.referenceImage
+        ? await createStorageThumbnail(prompt.referenceImage, 240, 0.55)
+        : prompt.referenceImage;
+
+      const storageThumbUser = prompt.userPhoto
+        ? await createStorageThumbnail(prompt.userPhoto, 160, 0.5)
+        : undefined;
+
+      const storagePrompt: GeneratedPromptResult = {
+        ...prompt,
+        referenceImage: storageThumbRef,
+        userPhoto: storageThumbUser,
+      };
+
+      const history = this.getHistory();
+      const existingIndex = history.findIndex((h) => h.id === prompt.id);
+      let updated: GeneratedPromptResult[];
+
+      if (existingIndex >= 0) {
+        updated = [...history];
+        updated[existingIndex] = storagePrompt;
+      } else {
+        updated = [storagePrompt, ...history];
+      }
+
+      this.safeSetStorage(updated);
+    } catch (err) {
+      console.warn("Non-fatal: error preparing thumbnail for history save:", err);
+      // Fallback synchronous save with minimal data
+      this.savePromptSync(prompt);
     }
+  }
 
-    localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(updated));
+  /**
+   * Synchronous fallback saver using placeholders if async thumbnail generation fails.
+   */
+  public static savePromptSync(prompt: GeneratedPromptResult): void {
+    if (typeof window === "undefined") return;
+    try {
+      const storagePrompt: GeneratedPromptResult = {
+        ...prompt,
+        referenceImage:
+          prompt.referenceImage && prompt.referenceImage.length > 8000
+            ? COMPACT_PLACEHOLDER
+            : prompt.referenceImage,
+        userPhoto: undefined,
+      };
+      const history = this.getHistory();
+      const existingIndex = history.findIndex((h) => h.id === prompt.id);
+      let updated: GeneratedPromptResult[];
+
+      if (existingIndex >= 0) {
+        updated = [...history];
+        updated[existingIndex] = storagePrompt;
+      } else {
+        updated = [storagePrompt, ...history];
+      }
+
+      this.safeSetStorage(updated);
+    } catch (e) {
+      console.warn("savePromptSync error:", e);
+    }
   }
 
   public static toggleFavorite(
@@ -87,7 +223,7 @@ export class HistoryService {
       item.isFavorited = false;
     }
 
-    localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history));
+    this.safeSetStorage(history);
     return { success: true, isFavorited: item.isFavorited };
   }
 
@@ -95,7 +231,7 @@ export class HistoryService {
     if (typeof window === "undefined") return;
     const history = this.getHistory();
     const filtered = history.filter((h) => h.id !== id);
-    localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(filtered));
+    this.safeSetStorage(filtered);
   }
 
   public static getFavorites(): GeneratedPromptResult[] {
@@ -104,7 +240,11 @@ export class HistoryService {
 
   public static clearAll(): void {
     if (typeof window === "undefined") return;
-    localStorage.removeItem(HISTORY_STORAGE_KEY);
+    try {
+      localStorage.removeItem(HISTORY_STORAGE_KEY);
+    } catch (e) {
+      console.warn("Failed to clear localStorage:", e);
+    }
   }
 
   public static filterAndSort(
