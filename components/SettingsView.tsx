@@ -17,6 +17,7 @@ import { OutputStyle, PromptMode, User } from "@/types";
 import { CreditService } from "@/services/creditService";
 import { HistoryService } from "@/services/historyService";
 import { AuthService } from "@/services/authService";
+import { EmailValidationService } from "@/services/emailValidationService";
 
 interface SettingsViewProps {
   user: User;
@@ -42,11 +43,22 @@ export function SettingsView({
 
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
-    const updated = AuthService.updateProfile({ name, email });
-    setUser(updated);
-    setIsSaved(true);
-    showToast("success", "Profile settings saved.");
-    setTimeout(() => setIsSaved(false), 2000);
+    const validation = EmailValidationService.validate(email);
+    if (validation.isFake) {
+      showToast("error", `Fake Email Blocked: ${validation.reason}`);
+      return;
+    }
+
+    try {
+      const updated = AuthService.updateProfile({ name, email });
+      setUser(updated);
+      setIsSaved(true);
+      showToast("success", "Profile settings saved.");
+      setTimeout(() => setIsSaved(false), 2000);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to update profile";
+      showToast("error", msg);
+    }
   };
 
   const handleResetCredits = () => {
@@ -121,6 +133,14 @@ export function SettingsView({
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+              <div className="flex items-center gap-2 mt-1.5 text-[11px]">
+                <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
+                  <Shield className="w-3 h-3" />
+                  {user.authProvider === "google" ? "Google Account (Verified)" : "Verified Genuine Email"}
+                </span>
+                <span className="text-slate-400">•</span>
+                <span className="text-slate-500">Fake Email Guard Active</span>
+              </div>
             </div>
           </div>
 

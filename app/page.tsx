@@ -134,6 +134,7 @@ export default function Home() {
             onToggleTheme={handleToggleTheme}
             isDarkMode={isDarkMode}
             onOpenMobileMenu={() => setMobileOpen(true)}
+            onOpenAuth={() => setIsAuthModalOpen(true)}
           />
 
           <main className="flex-1 pb-12">

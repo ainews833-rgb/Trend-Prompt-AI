@@ -33,6 +33,8 @@ export interface AdvancedSettings {
   creativity: number; // 0 - 100
   outputStyle: OutputStyle;
   targetPlatform: TargetPlatform;
+  lockFaceAndBody?: boolean; // When true, locks nose, ears, eye shape, and body build 100%
+  preserveFacialGeometry?: number; // 0 - 100
 }
 
 export interface StructuredAnalysis {
@@ -51,6 +53,7 @@ export interface StructuredAnalysis {
   image_quality: string;
   identity_preservation: string;
   special_details: string;
+  facial_features_lock?: string;
 }
 
 export interface TrendInsights {
@@ -69,6 +72,9 @@ export interface GeneratedPromptResult {
   midjourneyFormat: string;
   fluxFormat: string;
   dalleFormat: string;
+  negativePrompt?: string;
+  characterRefCommand?: string;
+  faceLockGuaranteed?: boolean;
   structuredAnalysis: StructuredAnalysis;
   trendInsights: TrendInsights;
   mode: PromptMode;
@@ -94,6 +100,8 @@ export interface User {
   creditsRemaining: number;
   creditsTotal: number;
   creditPacks: number;
+  authProvider?: 'email' | 'google';
+  isEmailVerified?: boolean;
 }
 
 export interface CreditTransaction {

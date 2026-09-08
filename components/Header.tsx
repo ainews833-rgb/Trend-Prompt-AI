@@ -20,6 +20,7 @@ interface HeaderProps {
   onToggleTheme: () => void;
   isDarkMode: boolean;
   onOpenMobileMenu: () => void;
+  onOpenAuth?: () => void;
 }
 
 export function Header({
@@ -30,6 +31,7 @@ export function Header({
   onToggleTheme,
   isDarkMode,
   onOpenMobileMenu,
+  onOpenAuth,
 }: HeaderProps) {
   const getTabTitle = () => {
     switch (activeTab) {
@@ -122,12 +124,28 @@ export function Header({
         {/* Theme toggle */}
         <button
           onClick={onToggleTheme}
-          className="p-2 rounded-lg text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-colors"
+          className="p-2 rounded-lg text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
           title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
           aria-label="Toggle theme"
         >
           {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
         </button>
+
+        {/* Account / Sign In Trigger */}
+        {onOpenAuth && (
+          <button
+            onClick={onOpenAuth}
+            className="flex items-center gap-2 p-1 pl-2 pr-2.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-xs font-medium text-slate-700 dark:text-slate-200 cursor-pointer"
+            title="Account / Sign In with Email or Google"
+          >
+            <img
+              src={user.avatar}
+              alt={user.name}
+              className="w-5 h-5 rounded-full object-cover border border-slate-300 dark:border-slate-600"
+            />
+            <span className="hidden md:inline truncate max-w-[90px]">{user.name.split(" ")[0]}</span>
+          </button>
+        )}
       </div>
     </header>
   );

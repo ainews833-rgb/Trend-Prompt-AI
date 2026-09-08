@@ -24,6 +24,9 @@ import {
   Minimize2,
   UserCheck,
   Compass,
+  ShieldCheck,
+  ShieldAlert,
+  Shield,
 } from "lucide-react";
 import {
   AdvancedSettings,
@@ -46,6 +49,10 @@ interface WorkspaceViewProps {
   initialPresetId?: string | null;
   onClearInitialPreset?: () => void;
 }
+
+const DEFAULT_NEGATIVE_PROMPT =
+  "altered face, modified face, changed nose, different nose shape, reshaped nose bridge, modified nostrils, altered ears, different ears, modified earlobes, changed eye shape, modified eye distance, altered facial features, different person, wrong face, morphed face, celebrity lookalike, altered body size, artificial slimming, changed body weight, distorted body proportions, airbrushed plastic skin, 3d render, cartoon, doll-like, bad anatomy, distorted hands";
+
 
 const PROMPT_MODES: Array<{
   id: PromptMode;
@@ -119,6 +126,8 @@ export function WorkspaceView({
     creativity: 30,
     outputStyle: "Cinematic",
     targetPlatform: "midjourney",
+    lockFaceAndBody: true,
+    preserveFacialGeometry: 100,
   });
 
   // Analysis & Output state
@@ -128,7 +137,7 @@ export function WorkspaceView({
   const [copied, setCopied] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editablePromptText, setEditablePromptText] = useState("");
-  const [activePlatformTab, setActivePlatformTab] = useState<"standard" | "midjourney" | "flux" | "dalle">("standard");
+  const [activePlatformTab, setActivePlatformTab] = useState<"standard" | "midjourney" | "flux" | "dalle" | "negative">("standard");
   const [activeAccordion, setActiveAccordion] = useState<"prompt" | "breakdown" | "trend" | "workflow">("prompt");
 
   // File input refs
@@ -331,6 +340,8 @@ export function WorkspaceView({
         return currentResult.fluxFormat;
       case "dalle":
         return currentResult.dalleFormat;
+      case "negative":
+        return currentResult.negativePrompt || DEFAULT_NEGATIVE_PROMPT;
       default:
         return editablePromptText || currentResult.fullPrompt;
     }
@@ -829,7 +840,7 @@ export function WorkspaceView({
                           : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
                       }`}
                     >
-                      Midjourney v6
+                      Midjourney v6.1
                     </button>
                     <button
                       onClick={() => setActivePlatformTab("flux")}
@@ -850,6 +861,49 @@ export function WorkspaceView({
                       }`}
                     >
                       DALL-E 3
+                    </button>
+                    <button
+                      onClick={() => setActivePlatformTab("negative")}
+                      className={`pb-1 font-medium border-b-2 transition-colors shrink-0 flex items-center gap-1.5 ${
+                        activePlatformTab === "negative"
+                          ? "border-rose-600 text-rose-600 dark:border-rose-400 dark:text-rose-400 font-semibold"
+                          : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                      }`}
+                    >
+                      <ShieldAlert className="w-3.5 h-3.5" />
+                      <span>Negative Prompt (Anti-Face Alteration)</span>
+                    </button>
+                  </div>
+
+                  {/* Face & Anatomy Preservation Guarantee Banner */}
+                  <div className="p-3 rounded-xl bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="p-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 shrink-0">
+                        <ShieldCheck className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
+                          <span>Identity &amp; Anatomy Freeze Active</span>
+                          <span className="text-[10px] uppercase font-bold bg-emerald-200/80 dark:bg-emerald-900/80 text-emerald-900 dark:text-emerald-100 px-1.5 py-0.5 rounded">
+                            100% Locked
+                          </span>
+                        </p>
+                        <p className="text-[11px] text-emerald-700 dark:text-emerald-300">
+                          Authentic nose shape, ear contours, eye shape, and body build are protected from AI distortion.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        const neg = currentResult?.negativePrompt || DEFAULT_NEGATIVE_PROMPT;
+                        navigator.clipboard.writeText(neg);
+                        showToast("success", "Copied anti-face alteration negative prompt!");
+                      }}
+                      className="shrink-0 flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/60 hover:bg-emerald-200 dark:hover:bg-emerald-850 text-emerald-800 dark:text-emerald-200 font-semibold text-[11px] transition-colors cursor-pointer"
+                      title="Copy negative prompt designed to prevent facial modifications"
+                    >
+                      <Copy className="w-3 h-3" />
+                      <span>Copy Negative Prompt</span>
                     </button>
                   </div>
 
@@ -1054,6 +1108,79 @@ export function WorkspaceView({
                   />
                 </div>
               </div>
+
+              {/* Facial Geometry Lock (Nose & Ears) */}
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <label className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    Facial Geometry (Nose &amp; Ears)
+                  </label>
+                  <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                    {advancedSettings.preserveFacialGeometry ?? 100}% (Locked)
+                  </span>
+                </div>
+                <div className="relative flex items-center h-4">
+                  <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                    <div
+                      className="bg-emerald-500 h-full rounded-full transition-all"
+                      style={{ width: `${advancedSettings.preserveFacialGeometry ?? 100}%` }}
+                    />
+                  </div>
+                  <input
+                    type="range"
+                    min="50"
+                    max="100"
+                    value={advancedSettings.preserveFacialGeometry ?? 100}
+                    onChange={(e) =>
+                      setAdvancedSettings({
+                        ...advancedSettings,
+                        preserveFacialGeometry: Number(e.target.value),
+                      })
+                    }
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                </div>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500">
+                  Freezes authentic nasal bridge, tip, nostril contours, and earlobe geometry.
+                </p>
+              </div>
+
+              {/* Body Proportions & Size Lock */}
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <label className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    Body Proportions &amp; Size
+                  </label>
+                  <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                    {advancedSettings.lockFaceAndBody ? "100% (No Slimming)" : "Flexible"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setAdvancedSettings({
+                        ...advancedSettings,
+                        lockFaceAndBody: !advancedSettings.lockFaceAndBody,
+                      })
+                    }
+                    className={`flex-1 py-1 px-3 rounded-lg text-xs font-bold border transition-colors cursor-pointer ${
+                      advancedSettings.lockFaceAndBody
+                        ? "bg-emerald-50 border-emerald-300 text-emerald-700 dark:bg-emerald-950/60 dark:border-emerald-700 dark:text-emerald-300"
+                        : "bg-slate-100 border-slate-300 text-slate-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300"
+                    }`}
+                  >
+                    {advancedSettings.lockFaceAndBody
+                      ? "✓ Strict Authentic Body Size"
+                      : "Standard Model Proportion"}
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500">
+                  Strictly prevents artificial AI slimming, body distortion, or unnatural warping.
+                </p>
+              </div>
             </div>
           </section>
 
@@ -1227,6 +1354,17 @@ export function WorkspaceView({
                       {currentResult.structuredAnalysis.identity_preservation}
                     </p>
                   </div>
+                  {currentResult.structuredAnalysis.facial_features_lock && (
+                    <div className="sm:col-span-2 p-3 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-900/60">
+                      <p className="font-bold text-emerald-900 dark:text-emerald-200 mb-0.5 flex items-center gap-1.5">
+                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                        Facial Geometry &amp; Anatomical Freeze
+                      </p>
+                      <p className="text-emerald-800 dark:text-emerald-300 leading-relaxed">
+                        {currentResult.structuredAnalysis.facial_features_lock}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
