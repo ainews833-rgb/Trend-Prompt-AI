@@ -1,6 +1,8 @@
 import { GeneratedPromptResult, PromptMode } from "@/types";
 import { PRESET_TRENDS } from "./presetSamples";
 import { createStorageThumbnail } from "@/lib/imageUtils";
+import { auth, db } from "@/lib/firebase";
+import { doc, setDoc } from "firebase/firestore";
 
 const HISTORY_STORAGE_KEY = "trendprompt_prompt_history";
 const MAX_HISTORY_ITEMS = 30;
@@ -158,6 +160,34 @@ export class HistoryService {
       }
 
       this.safeSetStorage(updated);
+
+      // Cloud Persistence: Sync to Firestore if authenticated
+      if (auth.currentUser) {
+        try {
+          const promptDocRef = doc(db, "users", auth.currentUser.uid, "prompts", prompt.id);
+          await setDoc(
+            promptDocRef,
+            {
+              id: prompt.id,
+              userId: auth.currentUser.uid,
+              title: prompt.title,
+              fullPrompt: prompt.fullPrompt,
+              shortPrompt: prompt.shortPrompt,
+              detailedPrompt: prompt.detailedPrompt,
+              midjourneyFormat: prompt.midjourneyFormat,
+              leonardoFormat: prompt.leonardoFormat,
+              fluxFormat: prompt.fluxFormat,
+              negativePrompt: prompt.negativePrompt,
+              mode: prompt.mode,
+              isFavorited: prompt.isFavorited || false,
+              createdAt: prompt.createdAt || new Date().toISOString(),
+            },
+            { merge: true }
+          );
+        } catch (cloudErr) {
+          console.warn("Firestore prompt sync notice:", cloudErr);
+        }
+      }
     } catch (err) {
       console.warn("Non-fatal: error preparing thumbnail for history save:", err);
       // Fallback synchronous save with minimal data

@@ -161,12 +161,12 @@ export function Sidebar({
       {/* Bottom Area: Credits, Upgrade, Profile */}
       <div className="p-4 border-t border-slate-100 dark:border-slate-800">
         {/* Credits usage card */}
-        <div className="bg-slate-50 dark:bg-slate-800/60 rounded-xl p-4 mb-4 border border-slate-200 dark:border-slate-700">
+        <div className="bg-slate-50 dark:bg-slate-800/60 rounded-xl p-4 mb-4 border border-slate-200 dark:border-slate-700" suppressHydrationWarning>
           <div className="flex justify-between items-center mb-2">
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               Usage
             </span>
-            <span className="text-xs font-bold text-blue-600 dark:text-blue-400">
+            <span className="text-xs font-bold text-blue-600 dark:text-blue-400" suppressHydrationWarning>
               {user.creditsRemaining}/{user.creditsTotal} Analysis
             </span>
           </div>

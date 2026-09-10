@@ -35,6 +35,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, showToast }: AuthModalPr
   const [otpCode, setOtpCode] = useState("");
   const [generatedOtp, setGeneratedOtp] = useState<string | null>(null);
   const [fakeEmailGuardEnabled, setFakeEmailGuardEnabled] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Google OAuth confirmation states
   const [isGoogleConfirming, setIsGoogleConfirming] = useState(false);
@@ -49,26 +50,23 @@ export function AuthModal({ isOpen, onClose, onSuccess, showToast }: AuthModalPr
   }, [email]);
 
   const handleStartGoogleSignIn = () => {
-    // Instead of one-click instant sign in, ask for user confirmation first as requested
     setIsGoogleConfirming(true);
   };
 
-  const handleConfirmGoogleSignIn = () => {
+  const handleConfirmGoogleSignIn = async () => {
     setIsAuthorizingGoogle(true);
-    setTimeout(() => {
-      try {
-        const user = AuthService.signInWithGoogle(googleAccountEmail, googleAccountName);
-        onSuccess(user);
-        showToast("success", `Authorized and signed in with Google as ${user.email}`);
-        setIsGoogleConfirming(false);
-        setIsAuthorizingGoogle(false);
-        onClose();
-      } catch (err: unknown) {
-        setIsAuthorizingGoogle(false);
-        const msg = err instanceof Error ? err.message : "Google authorization failed.";
-        showToast("error", msg);
-      }
-    }, 700);
+    try {
+      const user = await AuthService.signInWithFirebaseGoogle(googleAccountEmail, googleAccountName);
+      onSuccess(user);
+      showToast("success", `Authorized and signed in with Firebase as ${user.email}`);
+      setIsGoogleConfirming(false);
+      setIsAuthorizingGoogle(false);
+      onClose();
+    } catch (err: unknown) {
+      setIsAuthorizingGoogle(false);
+      const msg = err instanceof Error ? err.message : "Google authorization failed.";
+      showToast("error", msg);
+    }
   };
 
   if (!isOpen) return null;
@@ -235,7 +233,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, showToast }: AuthModalPr
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) {
       showToast("error", "Please enter an email address.");
@@ -248,20 +246,28 @@ export function AuthModal({ isOpen, onClose, onSuccess, showToast }: AuthModalPr
       return;
     }
 
+    if (password && password.length < 6) {
+      showToast("error", "Password must be at least 6 characters.");
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
       if (tab === "signup") {
-        const user = AuthService.signUp(name || "Creator", email);
+        const user = await AuthService.signUpWithFirebase(name || "Creator", email, password);
         onSuccess(user);
-        showToast("success", `Welcome to TrendPrompt AI, ${user.name}!`);
+        showToast("success", `Account created with Firebase! Welcome, ${user.name}!`);
       } else {
-        const user = AuthService.signIn(email);
+        const user = await AuthService.signInWithFirebase(email, password);
         onSuccess(user);
-        showToast("success", `Welcome back, ${user.name}!`);
+        showToast("success", `Signed in with Firebase! Welcome back, ${user.name}!`);
       }
       onClose();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Authentication failed.";
       showToast("error", msg);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -531,30 +537,49 @@ export function AuthModal({ isOpen, onClose, onSuccess, showToast }: AuthModalPr
 
             <button
               type="submit"
-              disabled={validation?.isFake === true}
+              disabled={validation?.isFake === true || isSubmitting}
               className="w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-xs shadow-md shadow-blue-500/20 transition-all flex items-center justify-center gap-2 pt-2 cursor-pointer"
             >
-              <span>
-                {tab === "login" ? "Sign In to Workspace" : "Create Account & Claim Credits"}
-              </span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              {isSubmitting ? (
+                <>
+                  <div className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                  <span>Connecting to Firebase...</span>
+                </>
+              ) : (
+                <>
+                  <span>
+                    {tab === "login" ? "Sign In to Workspace" : "Create Account & Claim Credits"}
+                  </span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </>
+              )}
             </button>
           </form>
         )}
 
-        {/* Security Trust Footer */}
-        <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
-          <div className="flex items-center gap-1">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-            <span>Anti-Fake Email Protection</span>
+        {/* Security Trust & Firebase Connected Footer */}
+        <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1.5 text-[11px] text-slate-400">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-semibold">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Firebase Auth &amp; Firestore Connected</span>
+            </div>
+            <span className="text-[10px] text-slate-500">Live Cloud Sync</span>
           </div>
-          <button
-            type="button"
-            onClick={() => setFakeEmailGuardEnabled(!fakeEmailGuardEnabled)}
-            className="hover:underline text-[10px] text-blue-600 dark:text-blue-400"
-          >
-            {fakeEmailGuardEnabled ? "Shield: Enabled" : "Shield: Disabled"}
-          </button>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+              <span>Anti-Fake Email Protection</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setFakeEmailGuardEnabled(!fakeEmailGuardEnabled)}
+              className="hover:underline text-[10px] text-blue-600 dark:text-blue-400 cursor-pointer"
+            >
+              {fakeEmailGuardEnabled ? "Shield: Enabled" : "Shield: Disabled"}
+            </button>
+          </div>
         </div>
       </div>
     </div>

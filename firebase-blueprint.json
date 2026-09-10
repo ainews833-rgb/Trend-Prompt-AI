@@ -1,0 +1,72 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "type": "object",
+      "description": "User profile with credit allocations and subscription tier",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "avatar": { "type": "string" },
+        "plan": { "type": "string", "enum": ["free", "creator_pro", "studio_unlimited"] },
+        "creditsRemaining": { "type": "number" },
+        "creditsTotal": { "type": "number" },
+        "creditPacks": { "type": "number" },
+        "authProvider": { "type": "string" },
+        "isEmailVerified": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "email", "name"]
+    },
+    "SavedPrompt": {
+      "title": "SavedPrompt",
+      "type": "object",
+      "description": "A generated or saved AI prompt in the user's workspace",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "fullPrompt": { "type": "string" },
+        "shortPrompt": { "type": "string" },
+        "detailedPrompt": { "type": "string" },
+        "midjourneyFormat": { "type": "string" },
+        "leonardoFormat": { "type": "string" },
+        "fluxFormat": { "type": "string" },
+        "negativePrompt": { "type": "string" },
+        "mode": { "type": "string" },
+        "isFavorited": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "title", "fullPrompt"]
+    },
+    "GenerationRecord": {
+      "title": "GenerationRecord",
+      "type": "object",
+      "description": "Historical generation log entry",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "thumbnailUrl": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "title"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile documents"
+    },
+    "/users/{userId}/prompts/{promptId}": {
+      "schema": "SavedPrompt",
+      "description": "Prompts saved by a user"
+    },
+    "/users/{userId}/history/{historyId}": {
+      "schema": "GenerationRecord",
+      "description": "Generation logs for a user"
+    }
+  }
+}

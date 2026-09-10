@@ -41,7 +41,7 @@ export function SettingsView({
   const [isSaved, setIsSaved] = useState(false);
   const transactions = CreditService.getTransactions().slice(0, 5);
 
-  const handleSaveProfile = (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     const validation = EmailValidationService.validate(email);
     if (validation.isFake) {
@@ -50,7 +50,7 @@ export function SettingsView({
     }
 
     try {
-      const updated = AuthService.updateProfile({ name, email });
+      const updated = await AuthService.updateProfile({ name, email });
       setUser(updated);
       setIsSaved(true);
       showToast("success", "Profile settings saved.");
