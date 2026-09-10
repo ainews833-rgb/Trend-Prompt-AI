@@ -138,15 +138,33 @@ RESPOND STRICTLY IN VALID JSON MATCHING THIS SCHEMA:
       `Analyze this image. Output Style: ${style}, Mode: ${mode}. Reverse-engineer the photographic blueprint and output the JSON format strictly.`
     );
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents,
-      config: {
-        systemInstruction,
-        responseMimeType: "application/json",
-        temperature: 0.4,
-      },
-    });
+    const modelsToTry = ["gemini-3.6-flash", "gemini-flash-latest", "gemini-3.8-flash"];
+    let response;
+    let lastError: unknown = null;
+
+    for (const modelName of modelsToTry) {
+      try {
+        response = await ai.models.generateContent({
+          model: modelName,
+          contents,
+          config: {
+            systemInstruction,
+            responseMimeType: "application/json",
+            temperature: 0.4,
+          },
+        });
+        if (response && response.text) {
+          break;
+        }
+      } catch (err) {
+        lastError = err;
+        console.warn(`Model ${modelName} failed in image-to-prompt, attempting fallback:`, err);
+      }
+    }
+
+    if (!response) {
+      throw lastError || new Error("Failed to generate content with Gemini models");
+    }
 
     const responseText = response.text || "{}";
     let parsedData: Record<string, unknown> = {};

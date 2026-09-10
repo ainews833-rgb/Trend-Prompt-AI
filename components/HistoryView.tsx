@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useSyncExternalStore } from "react";
 import {
   Search,
   SlidersHorizontal,
@@ -39,18 +39,44 @@ export function HistoryView({
   const [modeFilter, setModeFilter] = useState<PromptMode | "all">("all");
   const [sortBy, setSortBy] = useState<"newest" | "oldest">("newest");
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [version, setVersion] = useState(0);
+
+  const history = useSyncExternalStore(
+    HistoryService.subscribe,
+    HistoryService.getSnapshot,
+    HistoryService.getServerSnapshot
+  );
 
   const userPlan = user?.plan || "free";
   const maxFavorites = HistoryService.getMaxFavorites(userPlan);
   const currentFavoritesCount = useMemo(() => {
-    return HistoryService.getFavoritesCount();
-  }, [version]);
+    return history.filter((item) => item.isFavorited).length;
+  }, [history]);
 
   const prompts = useMemo(() => {
-    // version dependency ensures re-filtering on deletion or favorite toggle
-    return HistoryService.filterAndSort(searchQuery, modeFilter, sortBy, onlyFavorites);
-  }, [searchQuery, modeFilter, sortBy, onlyFavorites, version]);
+    let list = [...history];
+    if (onlyFavorites) {
+      list = list.filter((p) => p.isFavorited);
+    }
+    if (modeFilter !== "all") {
+      list = list.filter((p) => p.mode === modeFilter);
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(
+        (p) =>
+          p.title.toLowerCase().includes(q) ||
+          p.fullPrompt.toLowerCase().includes(q) ||
+          p.tags?.some((t) => t.toLowerCase().includes(q)) ||
+          p.trendInsights?.trendStyle.toLowerCase().includes(q)
+      );
+    }
+    list.sort((a, b) => {
+      const dateA = new Date(a.createdAt).getTime();
+      const dateB = new Date(b.createdAt).getTime();
+      return sortBy === "newest" ? dateB - dateA : dateA - dateB;
+    });
+    return list;
+  }, [history, searchQuery, modeFilter, sortBy, onlyFavorites]);
 
   const handleCopy = (id: string, text: string) => {
     navigator.clipboard.writeText(text);
@@ -67,13 +93,11 @@ export function HistoryView({
       return;
     }
     showToast("info", res.isFavorited ? "Added to favorites" : "Removed from favorites");
-    setVersion((v) => v + 1);
   };
 
   const handleDelete = (id: string) => {
     HistoryService.deletePrompt(id);
     showToast("info", "Prompt deleted from history.");
-    setVersion((v) => v + 1);
   };
 
   return (
@@ -92,7 +116,10 @@ export function HistoryView({
                 <span>Prompt History &amp; Saved Trends</span>
               )}
             </h2>
-            <span className="text-xs px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold">
+            <span
+              className="text-xs px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold"
+              suppressHydrationWarning
+            >
               Favorites: {currentFavoritesCount} / {maxFavorites} ({userPlan === "pro" || userPlan === "creator" ? "Pro Plan" : "Free Plan"})
             </span>
           </div>
@@ -263,7 +290,9 @@ export function HistoryView({
 
                   <div className="flex items-center gap-1.5 text-[11px] text-slate-400 pt-1">
                     <Calendar className="w-3.5 h-3.5" />
-                    <span>{new Date(prompt.createdAt).toLocaleDateString()}</span>
+                    <span suppressHydrationWarning>
+                      {prompt.createdAt ? prompt.createdAt.slice(0, 10) : ""}
+                    </span>
                   </div>
                 </div>
               </div>

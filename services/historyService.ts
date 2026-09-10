@@ -7,11 +7,62 @@ import { doc, setDoc } from "firebase/firestore";
 const HISTORY_STORAGE_KEY = "trendprompt_prompt_history";
 const MAX_HISTORY_ITEMS = 30;
 
+// Deterministic default initial history to avoid hydration discrepancies
+const DEFAULT_INITIAL_HISTORY: GeneratedPromptResult[] = PRESET_TRENDS.slice(0, 2).map((preset, index) => ({
+  ...preset.sampleResult,
+  id: "hist_seed_" + preset.id,
+  createdAt: new Date(1725000000000 - (index + 1) * 3600 * 1000 * 8).toISOString(),
+  isFavorited: index === 0,
+}));
+
 // Compact SVG placeholder for when raw image data must be evicted to preserve localStorage quota
 const COMPACT_PLACEHOLDER =
   "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'><rect width='120' height='120' fill='%231e293b'/><circle cx='60' cy='50' r='18' fill='%2338bdf8'/><path d='M30 95 C30 75 90 75 90 95' fill='%2338bdf8'/></svg>";
 
 export class HistoryService {
+  private static listeners: Set<() => void> = new Set();
+  private static cachedRaw: string | null = null;
+  private static cachedHistory: GeneratedPromptResult[] = DEFAULT_INITIAL_HISTORY;
+  private static serverSnapshot: GeneratedPromptResult[] = DEFAULT_INITIAL_HISTORY;
+
+  public static subscribe(listener: () => void): () => void {
+    HistoryService.listeners.add(listener);
+    const storageHandler = (e: StorageEvent) => {
+      if (e.key === HISTORY_STORAGE_KEY) {
+        HistoryService.cachedRaw = null;
+        listener();
+      }
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("storage", storageHandler);
+    }
+    return () => {
+      HistoryService.listeners.delete(listener);
+      if (typeof window !== "undefined") {
+        window.removeEventListener("storage", storageHandler);
+      }
+    };
+  }
+
+  private static notify(): void {
+    this.listeners.forEach((listener) => {
+      try {
+        listener();
+      } catch (err) {
+        console.error("Error in HistoryService listener:", err);
+      }
+    });
+  }
+
+  public static getServerSnapshot(): GeneratedPromptResult[] {
+    return HistoryService.serverSnapshot;
+  }
+
+  public static getSnapshot(): GeneratedPromptResult[] {
+    if (typeof window === "undefined") return HistoryService.serverSnapshot;
+    return HistoryService.getHistory();
+  }
+
   public static getMaxFavorites(plan: "free" | "pro" | "creator" = "free"): number {
     return plan === "pro" || plan === "creator" ? 25 : 5;
   }
@@ -33,10 +84,18 @@ export class HistoryService {
   private static safeSetStorage(items: GeneratedPromptResult[]): boolean {
     if (typeof window === "undefined") return false;
 
+    const commitAndNotify = (data: GeneratedPromptResult[], raw: string) => {
+      HistoryService.cachedRaw = raw;
+      HistoryService.cachedHistory = data;
+      HistoryService.notify();
+    };
+
     // Strategy 1: Direct attempt with items capped at MAX_HISTORY_ITEMS
     try {
       const capped = items.slice(0, MAX_HISTORY_ITEMS);
-      localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(capped));
+      const raw = JSON.stringify(capped);
+      localStorage.setItem(HISTORY_STORAGE_KEY, raw);
+      commitAndNotify(capped, raw);
       return true;
     } catch (e) {
       console.warn("localStorage quota reached on direct write. Starting auto-pruning recovery...", e);
@@ -60,7 +119,9 @@ export class HistoryService {
         }
         return item;
       });
-      localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(trimmed));
+      const raw = JSON.stringify(trimmed);
+      localStorage.setItem(HISTORY_STORAGE_KEY, raw);
+      commitAndNotify(trimmed, raw);
       return true;
     } catch (e) {
       console.warn("Quota still exceeded on Strategy 2. Trying aggressive compression...", e);
@@ -78,7 +139,9 @@ export class HistoryService {
             : item.referenceImage,
         userPhoto: undefined,
       }));
-      localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(combined));
+      const raw = JSON.stringify(combined);
+      localStorage.setItem(HISTORY_STORAGE_KEY, raw);
+      commitAndNotify(combined, raw);
       return true;
     } catch (e) {
       console.warn("Quota still exceeded on Strategy 3. Saving text metadata only...", e);
@@ -91,7 +154,9 @@ export class HistoryService {
         referenceImage: COMPACT_PLACEHOLDER,
         userPhoto: undefined,
       }));
-      localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(textOnly));
+      const raw = JSON.stringify(textOnly);
+      localStorage.setItem(HISTORY_STORAGE_KEY, raw);
+      commitAndNotify(textOnly, raw);
       return true;
     } catch (e) {
       console.error("Critical storage exhaustion: unable to write history to localStorage.", e);
@@ -100,29 +165,38 @@ export class HistoryService {
   }
 
   public static getHistory(): GeneratedPromptResult[] {
-    if (typeof window === "undefined") return [];
+    if (typeof window === "undefined") return HistoryService.serverSnapshot;
+    if (HistoryService.cachedRaw !== null) {
+      return HistoryService.cachedHistory;
+    }
     try {
       const stored = localStorage.getItem(HISTORY_STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+          HistoryService.cachedRaw = stored;
+          HistoryService.cachedHistory = parsed;
+          return HistoryService.cachedHistory;
+        }
+      } else {
+        // Seed initial history into localStorage quietly without notifying listeners
+        try {
+          const raw = JSON.stringify(DEFAULT_INITIAL_HISTORY);
+          localStorage.setItem(HISTORY_STORAGE_KEY, raw);
+          HistoryService.cachedRaw = raw;
+          HistoryService.cachedHistory = DEFAULT_INITIAL_HISTORY;
+          return HistoryService.cachedHistory;
+        } catch {
+          // ignore quota or disabled storage
         }
       }
     } catch (e) {
       console.warn("Failed to parse history from localStorage:", e);
     }
 
-    // Seed with two default historical entries from PRESET_TRENDS for a rich initial experience
-    const initialSeed: GeneratedPromptResult[] = PRESET_TRENDS.slice(0, 2).map((preset, index) => ({
-      ...preset.sampleResult,
-      id: "hist_seed_" + preset.id,
-      createdAt: new Date(Date.now() - (index + 1) * 3600 * 1000 * 8).toISOString(),
-      isFavorited: index === 0,
-    }));
-
-    this.safeSetStorage(initialSeed);
-    return initialSeed;
+    HistoryService.cachedRaw = "";
+    HistoryService.cachedHistory = DEFAULT_INITIAL_HISTORY;
+    return HistoryService.cachedHistory;
   }
 
   /**
@@ -272,6 +346,9 @@ export class HistoryService {
     if (typeof window === "undefined") return;
     try {
       localStorage.removeItem(HISTORY_STORAGE_KEY);
+      HistoryService.cachedRaw = null;
+      HistoryService.cachedHistory = [];
+      HistoryService.notify();
     } catch (e) {
       console.warn("Failed to clear localStorage:", e);
     }

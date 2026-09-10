@@ -258,14 +258,32 @@ You MUST respond with valid, parseable JSON strictly matching this schema:
 
   parts.push({ text: promptText });
 
-  const response = await ai.models.generateContent({
-    model: "gemini-2.5-flash",
-    contents: { parts },
-    config: {
-      responseMimeType: "application/json",
-      temperature: Math.max(0.2, advancedSettings.creativity / 100),
-    },
-  });
+  const modelsToTry = ["gemini-3.6-flash", "gemini-flash-latest", "gemini-3.8-flash"];
+  let response;
+  let lastError: unknown = null;
+
+  for (const modelName of modelsToTry) {
+    try {
+      response = await ai.models.generateContent({
+        model: modelName,
+        contents: { parts },
+        config: {
+          responseMimeType: "application/json",
+          temperature: Math.max(0.2, advancedSettings.creativity / 100),
+        },
+      });
+      if (response && response.text) {
+        break;
+      }
+    } catch (err) {
+      lastError = err;
+      console.warn(`Model ${modelName} failed in analyze-prompt, attempting fallback:`, err);
+    }
+  }
+
+  if (!response) {
+    throw lastError || new Error("Failed to generate content with Gemini models");
+  }
 
   const text = response.text || "{}";
   let parsed: Record<string, unknown> = {};

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useSyncExternalStore } from "react";
 import {
   Wand2,
   FolderHeart,
@@ -37,23 +37,25 @@ export function DashboardView({
   onOpenUpgrade,
   showToast,
 }: DashboardViewProps) {
-  const history = HistoryService.getHistory();
+  const history = useSyncExternalStore(
+    HistoryService.subscribe,
+    HistoryService.getSnapshot,
+    HistoryService.getServerSnapshot
+  );
+
+  const promos = useSyncExternalStore(
+    CmsService.subscribe,
+    CmsService.getPublishedPromptsSnapshot,
+    CmsService.getServerSnapshot
+  );
+
   const recentPrompts = history.slice(0, 4);
   const favoriteCount = history.filter((h) => h.isFavorited).length;
 
-  const [promos, setPromos] = useState<CmsPrompt[]>(() => CmsService.getPublishedPrompts());
   const [selectedPrompt, setSelectedPrompt] = useState<CmsPrompt | null>(null);
   const [isSideDrawerOpen, setIsSideDrawerOpen] = useState(false);
   const [copiedPromptId, setCopiedPromptId] = useState<string | null>(null);
   const [savedPromptIds, setSavedPromptIds] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    const handleUpdate = () => {
-      setPromos(CmsService.getPublishedPrompts());
-    };
-    window.addEventListener("cms-prompts-updated", handleUpdate);
-    return () => window.removeEventListener("cms-prompts-updated", handleUpdate);
-  }, []);
 
   const handleCopy = (text: string, promptId?: string) => {
     navigator.clipboard.writeText(text);
@@ -139,26 +141,32 @@ export function DashboardView({
         <div className="mt-8 pt-6 border-t border-white/10 grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
           <div>
             <span className="text-slate-400 block">Remaining Credits</span>
-            <span className="text-base font-bold text-white flex items-center gap-1 mt-0.5">
+            <span
+              className="text-base font-bold text-white flex items-center gap-1 mt-0.5"
+              suppressHydrationWarning
+            >
               <Zap className="w-4 h-4 text-amber-400" />
               {user.creditsRemaining} / {user.creditsTotal}
             </span>
           </div>
           <div>
             <span className="text-slate-400 block">Saved Prompts</span>
-            <span className="text-base font-bold text-white mt-0.5 block">
+            <span className="text-base font-bold text-white mt-0.5 block" suppressHydrationWarning>
               {history.length}
             </span>
           </div>
           <div>
             <span className="text-slate-400 block">Favorites</span>
-            <span className="text-base font-bold text-white mt-0.5 block">
+            <span className="text-base font-bold text-white mt-0.5 block" suppressHydrationWarning>
               {favoriteCount}
             </span>
           </div>
           <div>
             <span className="text-slate-400 block">Current Plan</span>
-            <span className="text-base font-bold text-blue-400 uppercase tracking-wider mt-0.5 block">
+            <span
+              className="text-base font-bold text-blue-400 uppercase tracking-wider mt-0.5 block"
+              suppressHydrationWarning
+            >
               {user.plan} Tier
             </span>
           </div>
@@ -416,8 +424,8 @@ export function DashboardView({
                   </div>
 
                   <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
-                    <span className="text-[11px] text-slate-400">
-                      {new Date(item.createdAt).toLocaleDateString()}
+                    <span className="text-[11px] text-slate-400" suppressHydrationWarning>
+                      {item.createdAt ? item.createdAt.slice(0, 10) : ""}
                     </span>
                     <button
                       onClick={() => handleCopy(item.fullPrompt)}

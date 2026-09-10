@@ -209,7 +209,7 @@ export function SettingsView({
                   <p className="font-medium text-slate-800 dark:text-slate-200">
                     {t.description}
                   </p>
-                  <span className="text-[11px] text-slate-400">
+                  <span className="text-[11px] text-slate-400" suppressHydrationWarning>
                     {new Date(t.timestamp).toLocaleTimeString()}
                   </span>
                 </div>

@@ -96,11 +96,10 @@ export class AuthService {
         try {
           this.user = JSON.parse(stored);
         } catch {
-          this.user = { ...DEFAULT_USER };
+          this.user = DEFAULT_USER;
         }
       } else {
-        this.user = { ...DEFAULT_USER };
-        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(this.user));
+        this.user = DEFAULT_USER;
       }
     }
     return this.user || DEFAULT_USER;

@@ -319,10 +319,10 @@ for (let i = 11; i <= 52; i++) {
     tags: [poolItem.tag, "Trending", "AI Photo Prompt"],
     imageUrl: poolItem.img,
     status: "published",
-    copiesCount: Math.floor(Math.random() * 9),
-    viewsCount: Math.floor(Math.random() * 400) + 120,
-    createdAt: new Date(Date.now() - (53 - i) * 86400000).toISOString(),
-    updatedAt: new Date(Date.now() - (53 - i) * 86400000).toISOString(),
+    copiesCount: (i * 3) % 9,
+    viewsCount: 120 + ((i * 19) % 320),
+    createdAt: "2026-08-20T10:00:00.000Z",
+    updatedAt: "2026-08-20T10:00:00.000Z",
     promptBody: `Detailed cinematic aesthetic portrait showcasing ${poolItem.title.toLowerCase()}. Hasselblad 80mm lens, natural directional lighting, shallow depth of field, Kodak Portra 400 colors, editorial framing, 8k photographic resolution.`,
     midjourneyFormat: `Cinematic portrait of ${poolItem.title.toLowerCase()}, 35mm film photography, natural lighting, high dynamic range, Hasselblad H6D-100c --ar 4:5 --v 6.1`,
     leonardoFormat: `Fine art editorial portrait, ${poolItem.title.toLowerCase()}, authentic photographic realism, high detail, studio lighting --strength 0.88`,
@@ -358,6 +358,86 @@ const SEED_REQUESTED: CmsRequestedPrompt[] = [
 ];
 
 export class CmsService {
+  private static listeners: Set<() => void> = new Set();
+  private static readonly EMPTY_LIST: CmsPrompt[] = [];
+  private static cachedRaw: string | null = null;
+  private static cachedPrompts: CmsPrompt[] = CmsService.EMPTY_LIST;
+  private static cachedPublishedPrompts: CmsPrompt[] = CmsService.EMPTY_LIST;
+
+  private static syncFromStorage(): void {
+    if (typeof window === "undefined") return;
+    try {
+      const stored = localStorage.getItem(CMS_PROMPTS_KEY);
+      if (stored === CmsService.cachedRaw && CmsService.cachedPrompts !== CmsService.EMPTY_LIST) {
+        return;
+      }
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const cleanUserPrompts = parsed.filter(
+            (p) =>
+              p &&
+              p.id &&
+              !p.id.startsWith("prompt-") &&
+              !p.id.startsWith("seed-") &&
+              !p.title?.includes("Mastering the Art of the Sketchbook") &&
+              !p.title?.includes("Vintage Countryside Picnic")
+          );
+          CmsService.cachedRaw = stored;
+          CmsService.cachedPrompts = cleanUserPrompts;
+          CmsService.cachedPublishedPrompts = cleanUserPrompts.filter((p) => p.status === "published");
+          return;
+        }
+      }
+    } catch {
+      // fallback
+    }
+    CmsService.cachedRaw = "";
+    CmsService.cachedPrompts = CmsService.EMPTY_LIST;
+    CmsService.cachedPublishedPrompts = CmsService.EMPTY_LIST;
+  }
+
+  public static subscribe(listener: () => void): () => void {
+    CmsService.listeners.add(listener);
+    const handler = () => {
+      CmsService.syncFromStorage();
+      listener();
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("cms-prompts-updated", handler);
+      window.addEventListener("storage", handler);
+    }
+    return () => {
+      CmsService.listeners.delete(listener);
+      if (typeof window !== "undefined") {
+        window.removeEventListener("cms-prompts-updated", handler);
+        window.removeEventListener("storage", handler);
+      }
+    };
+  }
+
+  public static notify(): void {
+    this.listeners.forEach((l) => {
+      try {
+        l();
+      } catch (e) {
+        console.error("Error in CmsService listener:", e);
+      }
+    });
+  }
+
+  public static getServerSnapshot(): CmsPrompt[] {
+    return CmsService.EMPTY_LIST;
+  }
+
+  public static getPublishedPromptsSnapshot(): CmsPrompt[] {
+    if (typeof window === "undefined") return CmsService.EMPTY_LIST;
+    if (CmsService.cachedRaw === null) {
+      CmsService.syncFromStorage();
+    }
+    return CmsService.cachedPublishedPrompts;
+  }
+
   public static getSettings(): CmsSettings {
     if (typeof window === "undefined") return DEFAULT_SETTINGS;
     try {
@@ -384,33 +464,19 @@ export class CmsService {
   }
 
   public static getPrompts(): CmsPrompt[] {
-    if (typeof window === "undefined") return [];
-    try {
-      const stored = localStorage.getItem(CMS_PROMPTS_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) {
-          // Filter out legacy random mock prompts so only user/admin promos appear
-          const cleanUserPrompts = parsed.filter(
-            (p) =>
-              p &&
-              p.id &&
-              !p.id.startsWith("prompt-") &&
-              !p.id.startsWith("seed-") &&
-              !p.title?.includes("Mastering the Art of the Sketchbook") &&
-              !p.title?.includes("Vintage Countryside Picnic")
-          );
-          return cleanUserPrompts;
-        }
-      }
-    } catch {
-      // fallback
+    if (typeof window === "undefined") return CmsService.EMPTY_LIST;
+    if (CmsService.cachedRaw === null) {
+      CmsService.syncFromStorage();
     }
-    return [];
+    return CmsService.cachedPrompts;
   }
 
   public static getPublishedPrompts(): CmsPrompt[] {
-    return this.getPrompts().filter((p) => p.status === "published");
+    if (typeof window === "undefined") return CmsService.EMPTY_LIST;
+    if (CmsService.cachedRaw === null) {
+      CmsService.syncFromStorage();
+    }
+    return CmsService.cachedPublishedPrompts;
   }
 
   public static savePrompt(prompt: Partial<CmsPrompt>): CmsPrompt {
@@ -581,7 +647,12 @@ export class CmsService {
   private static persistPrompts(list: CmsPrompt[]) {
     if (typeof window === "undefined") return;
     try {
-      localStorage.setItem(CMS_PROMPTS_KEY, JSON.stringify(list));
+      const raw = JSON.stringify(list);
+      localStorage.setItem(CMS_PROMPTS_KEY, raw);
+      CmsService.cachedRaw = raw;
+      CmsService.cachedPrompts = list;
+      CmsService.cachedPublishedPrompts = list.filter((p) => p.status === "published");
+      CmsService.notify();
       window.dispatchEvent(new CustomEvent("cms-prompts-updated", { detail: list }));
     } catch (e) {
       console.warn("Failed to persist CMS prompts:", e);
